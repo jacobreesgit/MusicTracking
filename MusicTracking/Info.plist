@@ -11,8 +11,8 @@
 	<string>This app tracks your music listening to provide personalized statistics and insights.</string>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
-		<string>com.yourname.musictracking.cleanup</string>
-		<string>com.yourname.musictracking.stats</string>
+		<string>jaba.MusicTracking.cleanup</string>
+		<string>jaba.MusicTracking.stats</string>
 	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
