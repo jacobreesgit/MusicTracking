@@ -1,0 +1,96 @@
+Discover Your Music Patterns with Music Tracking
+
+Transform your Apple Music listening habits into beautiful insights and statistics. Music Tracking analyzes your listening history to reveal your musical preferences, trends, and patterns like never before.
+
+🎵 COMPREHENSIVE MUSIC ANALYTICS
+• Track your top songs, artists, and albums automatically
+• See detailed weekly and monthly listening reports
+• Discover your peak listening times and daily patterns
+• Monitor play counts, skip rates, and session lengths
+• View comprehensive listening history and trends
+
+📊 BEAUTIFUL STATISTICS & INSIGHTS
+• Elegant weekly summaries with visual breakdowns
+• Recently played songs with real-time updates
+• Top played music across different time periods
+• Listening streak tracking and consistency metrics
+• Detailed analytics for music discovery patterns
+
+🔄 SEAMLESS BACKGROUND MONITORING
+• Automatic tracking when Apple Music is playing
+• Works in the background without draining battery
+• Real-time session detection and smart categorization
+• Handles interruptions and multiple listening sessions
+• Accurate timing and playback state monitoring
+
+☁️ SECURE iCLOUD SYNC
+• All data syncs securely across your devices
+• Everything stored in your personal iCloud account
+• No third-party servers or external data sharing
+• Complete control over your music data
+• Works offline with seamless sync when connected
+
+🛡️ PRIVACY-FIRST DESIGN
+• Your listening data never leaves your devices
+• No ads, tracking, or data collection for marketing
+• Open source privacy policy with full transparency
+• Local data processing with optional iCloud sync
+• You own and control all your music data
+
+📱 NATIVE iOS EXPERIENCE
+• Built specifically for iOS 18 with modern design
+• SwiftUI interface optimized for all screen sizes
+• Dark mode support and accessibility features
+• Smooth animations and intuitive navigation
+• Follows Apple's Human Interface Guidelines
+
+🎯 PERFECT FOR MUSIC LOVERS WHO WANT TO:
+• Understand their music listening habits better
+• Track progress toward listening goals
+• Rediscover forgotten favorite songs and artists
+• Share interesting music statistics with friends
+• Keep a permanent record of their musical journey
+
+✨ KEY FEATURES:
+• Real-time listening session tracking
+• Weekly top songs and artists
+• Historical listening data and trends
+• Beautiful charts and visual statistics
+• Export capabilities for your data
+• Background monitoring with smart detection
+• iCloud sync across all your devices
+• Privacy-focused with no data sharing
+
+🔧 TECHNICAL HIGHLIGHTS:
+• Supports 10,000+ listening sessions efficiently
+• Core Data optimization for large datasets
+• Background task management for continuous tracking
+• Smart algorithms for accurate session detection
+• Handles Apple Music interruptions gracefully
+
+REQUIREMENTS:
+• iOS 18.0 or later
+• Apple Music subscription
+• iCloud account (for sync across devices)
+• Approximately 5-10 MB of storage space
+
+GET STARTED:
+1. Download and open Music Tracking
+2. Grant Apple Music permissions
+3. Start listening to music normally
+4. Watch your statistics grow automatically
+
+Music Tracking respects your privacy and puts you in control of your data. All processing happens locally on your device, with optional secure sync through your personal iCloud account. We never collect personal information, share data with third parties, or use your listening habits for advertising.
+
+Join thousands of music lovers who have discovered new insights about their listening habits. Download Music Tracking today and start exploring your musical journey!
+
+SUPPORT & FEEDBACK:
+• In-app help and documentation
+• Responsive customer support
+• Regular updates with new features
+• Community feedback integration
+
+Privacy Policy: Available in-app and at [website]
+Terms of Service: Available in-app and at [website]
+
+Music Tracking - Your Personal Music Analytics Companion
