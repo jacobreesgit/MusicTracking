@@ -6,6 +6,7 @@
 	<array>
 		<string>processing</string>
 		<string>audio</string>
+		<string>remote-notification</string>
 	</array>
 	<key>NSAppleMusicUsageDescription</key>
 	<string>This app tracks your music listening to provide personalized statistics and insights.</string>
@@ -13,6 +14,7 @@
 	<array>
 		<string>jaba.MusicTracking.cleanup</string>
 		<string>jaba.MusicTracking.stats</string>
+		<string>jaba.MusicTracking.monitoring</string>
 	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>

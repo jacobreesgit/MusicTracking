@@ -1,6 +1,7 @@
 import Foundation
 import BackgroundTasks
 import Observation
+import MusicKit
 
 @Observable
 public final class BackgroundTaskManager {
@@ -17,12 +18,9 @@ public final class BackgroundTaskManager {
     
     private var registeredTaskIdentifiers: Set<String> = []
     
-    public init(
-        backgroundMusicMonitor: BackgroundMusicMonitor = .shared,
-        repository: MusicDataRepositoryProtocol
-    ) {
-        self.backgroundMusicMonitor = backgroundMusicMonitor
-        self.repository = repository
+    private init() {
+        self.backgroundMusicMonitor = BackgroundMusicMonitor.shared
+        self.repository = CoreDataRepository(persistenceController: PersistenceController.shared)
         
         print("BackgroundTaskManager initialized")
     }
@@ -125,7 +123,7 @@ public final class BackgroundTaskManager {
             do {
                 try await backgroundMusicMonitor.startMonitoring()
                 
-                await Task.sleep(nanoseconds: 25_000_000_000) // 25 seconds
+                try await Task.sleep(nanoseconds: 25_000_000_000) // 25 seconds
                 
                 await backgroundMusicMonitor.stopMonitoring()
                 
@@ -284,15 +282,7 @@ public final class BackgroundTaskManager {
     }
     
     private func performCleanupOperations() async throws {
-        let thirtyDaysAgo = Date().addingTimeInterval(-30 * 24 * 60 * 60)
-        
-        try await repository.deleteListeningSessions(olderThan: thirtyDaysAgo)
-        
-        let orphanedSongs = try await repository.fetchOrphanedSongs()
-        for song in orphanedSongs {
-            try await repository.deleteSong(song)
-        }
-        
+        try await repository.performCleanup()
         print("Cleanup operations completed successfully")
     }
     
@@ -302,11 +292,38 @@ public final class BackgroundTaskManager {
         
         let sessions = try await repository.fetchListeningSessions(from: startDate, to: endDate)
         
-        for session in sessions {
-            try await repository.updateSessionStatistics(session)
-        }
+        // Generate weekly stats for the current week using available repository methods
+        let weekStartDate = Calendar.current.startOfWeek(for: endDate)
+        let totalPlayTime = try await repository.getTotalListeningTime(from: weekStartDate, to: endDate)
+        let uniqueSongsCount = try await repository.getUniquesongsCount(from: weekStartDate, to: endDate)
+        let topSongs = try await repository.getTopSongs(from: weekStartDate, to: endDate, limit: 10)
+        let topArtists = try await repository.getTopArtists(from: weekStartDate, to: endDate, limit: 10)
         
-        try await repository.calculateWeeklyStatistics(for: startDate...endDate)
+        // Create weekly stats
+        let weeklyStats = DomainWeeklyStats(
+            weekStartDate: weekStartDate,
+            totalPlayTime: totalPlayTime,
+            uniqueSongsCount: uniqueSongsCount,
+            topSongs: topSongs.map { song, count in
+                TopSongData(
+                    songID: song.id.rawValue,
+                    title: song.title,
+                    artistName: song.artistName,
+                    playCount: count,
+                    totalPlayTime: 0 // We don't have individual song play time available
+                )
+            },
+            topArtists: topArtists.map { artist, count in
+                TopArtistData(
+                    artistName: artist,
+                    playCount: count,
+                    totalPlayTime: 0, // We don't have individual artist play time available
+                    uniqueSongsCount: 1 // We don't have unique songs count per artist available
+                )
+            }
+        )
+        
+        try await repository.saveWeeklyStats(weeklyStats)
         
         print("Stats calculation completed for \(sessions.count) sessions")
     }

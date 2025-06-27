@@ -330,7 +330,7 @@ public struct AnimatedNumberModifier: ViewModifier {
                     animatedValue = value
                 }
             }
-            .onChange(of: value) { newValue in
+            .onChange(of: value) { _, newValue in
                 withAnimation(.easeInOut(duration: 0.5)) {
                     animatedValue = newValue
                 }
@@ -357,21 +357,21 @@ public struct AnimatedNumber: View {
 
 extension View {
     public func hapticFeedback(_ style: UIImpactFeedbackGenerator.FeedbackStyle = .medium, trigger: Bool) -> some View {
-        self.onChange(of: trigger) { _ in
+        self.onChange(of: trigger) { _, _ in
             let impactFeedback = UIImpactFeedbackGenerator(style: style)
             impactFeedback.impactOccurred()
         }
     }
     
     public func selectionHaptic(trigger: Bool) -> some View {
-        self.onChange(of: trigger) { _ in
+        self.onChange(of: trigger) { _, _ in
             let selectionFeedback = UISelectionFeedbackGenerator()
             selectionFeedback.selectionChanged()
         }
     }
     
     public func notificationHaptic(_ type: UINotificationFeedbackGenerator.FeedbackType, trigger: Bool) -> some View {
-        self.onChange(of: trigger) { _ in
+        self.onChange(of: trigger) { _, _ in
             let notificationFeedback = UINotificationFeedbackGenerator()
             notificationFeedback.notificationOccurred(type)
         }

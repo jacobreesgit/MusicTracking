@@ -59,7 +59,6 @@ public final class TokenManager {
         lastRefreshAttempt = Date()
         
         var retryCount = 0
-        var lastError: Error?
         
         while retryCount < maxRetryAttempts {
             do {
@@ -97,7 +96,6 @@ public final class TokenManager {
                 }
                 
             } catch let error as AppError {
-                lastError = error
                 refreshError = error
                 
                 if !error.isRetryable {
@@ -106,7 +104,6 @@ public final class TokenManager {
                 
             } catch {
                 let appError = AppError.from(musicKitError: error)
-                lastError = appError
                 refreshError = appError
                 
                 if !appError.isRetryable {
@@ -174,9 +171,9 @@ public final class TokenManager {
     private func schedulePeriodicCheck() async {
         refreshTask = Task {
             while !Task.isCancelled {
-                try? await Task.sleep(for: .hours(1))
+                try? await Task.sleep(for: .seconds(3600)) // 1 hour
                 
-                await MainActor.run {
+                _ = await MainActor.run {
                     Task {
                         await checkTokenValidity()
                         

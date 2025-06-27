@@ -3,16 +3,16 @@ import CoreData
 import MusicKit
 
 public protocol MusicDataRepositoryProtocol {
-    func saveListeningSession(_ session: ListeningSession) async throws
-    func fetchListeningSessions(from startDate: Date, to endDate: Date) async throws -> [ListeningSession]
-    func fetchListeningSessions(for songID: MusicItemID, limit: Int) async throws -> [ListeningSession]
-    func fetchRecentListeningSessions(limit: Int) async throws -> [ListeningSession]
+    func saveListeningSession(_ session: DomainListeningSession) async throws
+    func fetchListeningSessions(from startDate: Date, to endDate: Date) async throws -> [DomainListeningSession]
+    func fetchListeningSessions(for songID: MusicItemID, limit: Int) async throws -> [DomainListeningSession]
+    func fetchRecentListeningSessions(limit: Int) async throws -> [DomainListeningSession]
     func deleteListeningSession(withID id: UUID) async throws
     func deleteAllListeningSessions() async throws
     
-    func saveWeeklyStats(_ stats: WeeklyStats) async throws
-    func fetchWeeklyStats(for weekStartDate: Date) async throws -> WeeklyStats?
-    func fetchAllWeeklyStats() async throws -> [WeeklyStats]
+    func saveWeeklyStats(_ stats: DomainWeeklyStats) async throws
+    func fetchWeeklyStats(for weekStartDate: Date) async throws -> DomainWeeklyStats?
+    func fetchAllWeeklyStats() async throws -> [DomainWeeklyStats]
     func deleteWeeklyStats(for weekStartDate: Date) async throws
     func deleteAllWeeklyStats() async throws
     
@@ -26,7 +26,7 @@ public protocol MusicDataRepositoryProtocol {
     func getStorageInfo() async throws -> StorageInfo
 }
 
-public struct WeeklyStats {
+public struct DomainWeeklyStats {
     public let id: UUID
     public let weekStartDate: Date
     public let totalPlayTime: TimeInterval
@@ -119,13 +119,13 @@ public struct StorageInfo {
     }
 }
 
-extension WeeklyStats: Equatable {
-    public static func == (lhs: WeeklyStats, rhs: WeeklyStats) -> Bool {
+extension DomainWeeklyStats: Equatable {
+    public static func == (lhs: DomainWeeklyStats, rhs: DomainWeeklyStats) -> Bool {
         lhs.id == rhs.id
     }
 }
 
-extension WeeklyStats: Hashable {
+extension DomainWeeklyStats: Hashable {
     public func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }

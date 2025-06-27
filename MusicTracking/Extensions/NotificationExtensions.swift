@@ -23,9 +23,6 @@ public extension Notification.Name {
     
     // MARK: - Authorization Events
     static let musicKitAuthorizationChanged = Notification.Name("musicKitAuthorizationChanged")
-    static let tokenRefreshSucceeded = Notification.Name("tokenRefreshSucceeded")
-    static let tokenRefreshFailed = Notification.Name("tokenRefreshFailed")
-    static let tokenWillExpireSoon = Notification.Name("tokenWillExpireSoon")
     
     // MARK: - Background Task Events
     static let backgroundTaskRegistered = Notification.Name("backgroundTaskRegistered")
@@ -34,11 +31,7 @@ public extension Notification.Name {
     static let backgroundTaskExpired = Notification.Name("backgroundTaskExpired")
     
     // MARK: - Core Data Events
-    static let cloudKitSyncCompleted = Notification.Name("cloudKitSyncCompleted")
-    static let cloudKitSyncStatusChanged = Notification.Name("cloudKitSyncStatusChanged")
-    static let cloudKitConflictsResolved = Notification.Name("cloudKitConflictsResolved")
-    static let coreDataLoaded = Notification.Name("coreDataLoaded")
-    static let coreDataLoadFailed = Notification.Name("coreDataLoadFailed")
+    // Note: Core Data notifications are declared in their respective service files
     
     // MARK: - App State Events
     static let appHealthStatusChanged = Notification.Name("appHealthStatusChanged")

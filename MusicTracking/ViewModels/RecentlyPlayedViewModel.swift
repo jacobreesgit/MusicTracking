@@ -4,7 +4,7 @@ import Observation
 @Observable
 public final class RecentlyPlayedViewModel {
     
-    public private(set) var recentSessions: [ListeningSession] = []
+    public private(set) var recentSessions: [DomainListeningSession] = []
     public private(set) var isLoading: Bool = false
     public private(set) var isLoadingMore: Bool = false
     public private(set) var error: AppError?
@@ -55,7 +55,7 @@ public final class RecentlyPlayedViewModel {
         isLoadingMore = true
         
         do {
-            let offset = (currentPage + 1) * pageSize
+            let _ = (currentPage + 1) * pageSize
             let endDate = recentSessions.last?.startTime ?? Date()
             
             let olderSessions = try await appStateManager.repository.fetchListeningSessions(
@@ -85,7 +85,7 @@ public final class RecentlyPlayedViewModel {
         await loadRecentSessions()
     }
     
-    public func getSessionsGroupedByDate() -> [(Date, [ListeningSession])] {
+    public func getSessionsGroupedByDate() -> [(Date, [DomainListeningSession])] {
         let calendar = Calendar.current
         let grouped = Dictionary(grouping: recentSessions) { session in
             calendar.startOfDay(for: session.startTime)
@@ -98,17 +98,17 @@ public final class RecentlyPlayedViewModel {
             }
     }
     
-    public func getSessionsForToday() -> [ListeningSession] {
+    public func getSessionsForToday() -> [DomainListeningSession] {
         let calendar = Calendar.current
         return recentSessions.filter { calendar.isDateInToday($0.startTime) }
     }
     
-    public func getSessionsForYesterday() -> [ListeningSession] {
+    public func getSessionsForYesterday() -> [DomainListeningSession] {
         let calendar = Calendar.current
         return recentSessions.filter { calendar.isDateInYesterday($0.startTime) }
     }
     
-    public func getSessionsForThisWeek() -> [ListeningSession] {
+    public func getSessionsForThisWeek() -> [DomainListeningSession] {
         let calendar = Calendar.current
         return recentSessions.filter { calendar.isDate($0.startTime, equalTo: Date(), toGranularity: .weekOfYear) }
     }
@@ -197,7 +197,7 @@ public final class RecentlyPlayedViewModel {
         )
     }
     
-    public func shouldLoadMore(for session: ListeningSession) -> Bool {
+    public func shouldLoadMore(for session: DomainListeningSession) -> Bool {
         guard let lastSession = recentSessions.last else { return false }
         return session.id == lastSession.id && hasMoreData && !isLoadingMore
     }
@@ -279,7 +279,7 @@ public final class RecentlyPlayedViewModel {
     private func handleSessionCompleted(_ notification: Notification) async {
         guard realtimeUpdatesEnabled else { return }
         
-        guard let session = notification.userInfo?[NotificationKeys.ListeningSession.session] as? ListeningSession else {
+        guard let session = notification.userInfo?[NotificationKeys.ListeningSession.session] as? DomainListeningSession else {
             return
         }
         

@@ -14,7 +14,7 @@ public final class CoreDataRepository: MusicDataRepositoryProtocol {
         return persistenceController.container.viewContext
     }
     
-    public func saveListeningSession(_ session: ListeningSession) async throws {
+    public func saveListeningSession(_ session: DomainListeningSession) async throws {
         try await persistenceController.performBackgroundTask { context in
             let predicate = NSPredicate(format: "id == %@", session.id as CVarArg)
             
@@ -31,7 +31,7 @@ public final class CoreDataRepository: MusicDataRepositoryProtocol {
         }
     }
     
-    public func fetchListeningSessions(from startDate: Date, to endDate: Date) async throws -> [ListeningSession] {
+    public func fetchListeningSessions(from startDate: Date, to endDate: Date) async throws -> [DomainListeningSession] {
         return try await persistenceController.performBackgroundTask { context in
             let request = ListeningSessionEntity.fetchSessionsInDateRange(
                 from: startDate,
@@ -44,7 +44,7 @@ public final class CoreDataRepository: MusicDataRepositoryProtocol {
         }
     }
     
-    public func fetchListeningSessions(for songID: MusicItemID, limit: Int) async throws -> [ListeningSession] {
+    public func fetchListeningSessions(for songID: MusicItemID, limit: Int) async throws -> [DomainListeningSession] {
         return try await persistenceController.performBackgroundTask { context in
             let request = ListeningSessionEntity.fetchSessionsForSong(
                 songID: songID.rawValue,
@@ -57,7 +57,7 @@ public final class CoreDataRepository: MusicDataRepositoryProtocol {
         }
     }
     
-    public func fetchRecentListeningSessions(limit: Int) async throws -> [ListeningSession] {
+    public func fetchRecentListeningSessions(limit: Int) async throws -> [DomainListeningSession] {
         return try await persistenceController.performBackgroundTask { context in
             let request = ListeningSessionEntity.fetchRecentSessions(limit: limit, in: context)
             let entities = try context.fetch(request)
@@ -83,7 +83,7 @@ public final class CoreDataRepository: MusicDataRepositoryProtocol {
         }
     }
     
-    public func saveWeeklyStats(_ stats: WeeklyStats) async throws {
+    public func saveWeeklyStats(_ stats: DomainWeeklyStats) async throws {
         try await persistenceController.performBackgroundTask { context in
             let weekStart = Calendar.current.startOfWeek(for: stats.weekStartDate)
             let predicate = NSPredicate(format: "weekStartDate == %@", weekStart as NSDate)
@@ -101,7 +101,7 @@ public final class CoreDataRepository: MusicDataRepositoryProtocol {
         }
     }
     
-    public func fetchWeeklyStats(for weekStartDate: Date) async throws -> WeeklyStats? {
+    public func fetchWeeklyStats(for weekStartDate: Date) async throws -> DomainWeeklyStats? {
         return try await persistenceController.performBackgroundTask { context in
             let request = WeeklyStatsEntity.fetchStatsForWeek(startDate: weekStartDate, in: context)
             let entities = try context.fetch(request)
@@ -109,7 +109,7 @@ public final class CoreDataRepository: MusicDataRepositoryProtocol {
         }
     }
     
-    public func fetchAllWeeklyStats() async throws -> [WeeklyStats] {
+    public func fetchAllWeeklyStats() async throws -> [DomainWeeklyStats] {
         return try await persistenceController.performBackgroundTask { context in
             let request = WeeklyStatsEntity.fetchAllStats(in: context)
             let entities = try context.fetch(request)
@@ -364,7 +364,7 @@ public final class CoreDataRepository: MusicDataRepositoryProtocol {
                 )
             }
         
-        let weeklyStats = WeeklyStats(
+        let weeklyStats = DomainWeeklyStats(
             weekStartDate: weekStart,
             totalPlayTime: totalPlayTime,
             uniqueSongsCount: uniqueSongs.count,

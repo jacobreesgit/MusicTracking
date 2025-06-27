@@ -47,7 +47,7 @@ extension WeeklyStatsEntity {
         }
     }
     
-    public convenience init(context: NSManagedObjectContext, from stats: WeeklyStats) {
+    public convenience init(context: NSManagedObjectContext, from stats: DomainWeeklyStats) {
         self.init(context: context)
         
         self.id = stats.id
@@ -68,7 +68,7 @@ extension WeeklyStatsEntity {
         self.updatedAt = now
     }
     
-    public func toDomainModel() -> WeeklyStats {
+    public func toDomainModel() -> DomainWeeklyStats {
         var topSongs: [TopSongData] = []
         var topArtists: [TopArtistData] = []
         
@@ -80,7 +80,7 @@ extension WeeklyStatsEntity {
             topArtists = (try? JSONDecoder().decode([TopArtistData].self, from: data)) ?? []
         }
         
-        return WeeklyStats(
+        return DomainWeeklyStats(
             id: id,
             weekStartDate: weekStartDate,
             totalPlayTime: totalPlayTime,
@@ -92,7 +92,7 @@ extension WeeklyStatsEntity {
         )
     }
     
-    public func updateFromDomainModel(_ stats: WeeklyStats) {
+    public func updateFromDomainModel(_ stats: DomainWeeklyStats) {
         self.weekStartDate = stats.weekStartDate
         self.totalPlayTime = stats.totalPlayTime
         self.uniqueSongsCount = Int32(stats.uniqueSongsCount)

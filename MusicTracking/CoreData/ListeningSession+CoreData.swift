@@ -53,7 +53,7 @@ extension ListeningSessionEntity {
         }
     }
     
-    public convenience init(context: NSManagedObjectContext, from session: ListeningSession) {
+    public convenience init(context: NSManagedObjectContext, from session: DomainListeningSession) {
         self.init(context: context)
         
         self.id = session.id
@@ -76,7 +76,7 @@ extension ListeningSessionEntity {
         self.updatedAt = now
     }
     
-    public func toDomainModel() -> ListeningSession {
+    public func toDomainModel() -> DomainListeningSession {
         let song = Song(
             id: MusicItemID(songID),
             title: songTitle,
@@ -89,7 +89,7 @@ extension ListeningSessionEntity {
             artworkURL: artworkURL != nil ? URL(string: artworkURL!) : nil
         )
         
-        return ListeningSession(
+        return DomainListeningSession(
             id: id,
             song: song,
             startTime: timestamp,
@@ -101,7 +101,7 @@ extension ListeningSessionEntity {
         )
     }
     
-    public func updateFromDomainModel(_ session: ListeningSession) {
+    public func updateFromDomainModel(_ session: DomainListeningSession) {
         self.songTitle = session.song.title
         self.artist = session.song.artistName
         self.album = session.song.albumTitle

@@ -14,7 +14,7 @@ import AVFoundation
 struct MusicTrackingApp: App {
     
     @State private var appStateManager = AppStateManager.shared
-    @State private var backgroundTaskManager = BackgroundTaskManager.shared
+    private let backgroundTaskManager = BackgroundTaskManager.shared
     @State private var audioSessionManager = AudioSessionManager.shared
     
     var body: some Scene {

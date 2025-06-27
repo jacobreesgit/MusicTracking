@@ -1,7 +1,7 @@
 import Foundation
 import MusicKit
 
-public enum AppError: LocalizedError {
+public enum AppError: LocalizedError, Equatable {
     case musicKitNotAuthorized
     case musicKitPermissionDenied
     case musicKitNotAvailable
@@ -24,8 +24,12 @@ public enum AppError: LocalizedError {
     case parsingError(String)
     
     case networkNotAvailable
+    case networkUnavailable
     case requestTimeout
     case serverError(Int, String?)
+    
+    case cloudKitSyncFailed(String)
+    case cloudKitNotAvailable
     
     public var errorDescription: String? {
         switch self {
@@ -69,10 +73,17 @@ public enum AppError: LocalizedError {
             
         case .networkNotAvailable:
             return "Network connection is not available."
+        case .networkUnavailable:
+            return "Network is currently unavailable."
         case .requestTimeout:
             return "Request timed out. Please try again."
         case .serverError(let code, let message):
             return "Server error (\(code)): \(message ?? "Unknown error")"
+            
+        case .cloudKitSyncFailed(let message):
+            return "CloudKit sync failed: \(message)"
+        case .cloudKitNotAvailable:
+            return "CloudKit is not available."
         }
     }
     
@@ -98,8 +109,11 @@ public enum AppError: LocalizedError {
         case .invalidData, .missingData, .parsingError:
             return "Data processing failed."
             
-        case .networkNotAvailable, .requestTimeout, .serverError:
+        case .networkNotAvailable, .networkUnavailable, .requestTimeout, .serverError:
             return "Network communication failed."
+            
+        case .cloudKitSyncFailed, .cloudKitNotAvailable:
+            return "iCloud synchronization failed."
         }
     }
     
@@ -111,7 +125,7 @@ public enum AppError: LocalizedError {
             return "Ensure you have an active Apple Music subscription and your device supports Apple Music."
         case .musicKitTokenExpired, .musicKitTokenRefreshFailed:
             return "Try logging out and back into Apple Music, or restart the app."
-        case .musicKitNetworkError, .networkNotAvailable, .requestTimeout:
+        case .musicKitNetworkError, .networkNotAvailable, .networkUnavailable, .requestTimeout:
             return "Check your internet connection and try again."
         case .musicKitRequestFailed, .musicKitUnknownError:
             return "Try again later or restart the app."
@@ -129,12 +143,17 @@ public enum AppError: LocalizedError {
             
         case .serverError:
             return "This is likely a temporary server issue. Try again later."
+            
+        case .cloudKitSyncFailed, .cloudKitNotAvailable:
+            return "Check your iCloud settings and internet connection. Make sure you're signed into iCloud."
         }
     }
     
     public var isRetryable: Bool {
         switch self {
-        case .musicKitNetworkError, .musicKitRequestFailed, .networkNotAvailable, .requestTimeout, .serverError:
+        case .musicKitNetworkError, .musicKitRequestFailed, .networkNotAvailable, .networkUnavailable, .requestTimeout, .serverError:
+            return true
+        case .cloudKitSyncFailed, .cloudKitNotAvailable:
             return true
         case .backgroundTaskExpired, .backgroundTaskFailed:
             return true
@@ -157,22 +176,40 @@ public enum AppError: LocalizedError {
             return false
         }
     }
+    
+    public static func == (lhs: AppError, rhs: AppError) -> Bool {
+        switch (lhs, rhs) {
+        case (.musicKitNotAuthorized, .musicKitNotAuthorized),
+             (.musicKitPermissionDenied, .musicKitPermissionDenied),
+             (.musicKitNotAvailable, .musicKitNotAvailable),
+             (.musicKitTokenExpired, .musicKitTokenExpired),
+             (.musicKitTokenRefreshFailed, .musicKitTokenRefreshFailed),
+             (.coreDataContextNotFound, .coreDataContextNotFound),
+             (.coreDataModelNotFound, .coreDataModelNotFound),
+             (.backgroundTaskExpired, .backgroundTaskExpired),
+             (.networkNotAvailable, .networkNotAvailable),
+             (.networkUnavailable, .networkUnavailable),
+             (.requestTimeout, .requestTimeout),
+             (.cloudKitNotAvailable, .cloudKitNotAvailable):
+            return true
+        case (.musicKitRequestFailed(let lhsMessage), .musicKitRequestFailed(let rhsMessage)),
+             (.backgroundTaskFailed(let lhsMessage), .backgroundTaskFailed(let rhsMessage)),
+             (.invalidData(let lhsMessage), .invalidData(let rhsMessage)),
+             (.missingData(let lhsMessage), .missingData(let rhsMessage)),
+             (.parsingError(let lhsMessage), .parsingError(let rhsMessage)),
+             (.cloudKitSyncFailed(let lhsMessage), .cloudKitSyncFailed(let rhsMessage)):
+            return lhsMessage == rhsMessage
+        case (.serverError(let lhsCode, let lhsMessage), .serverError(let rhsCode, let rhsMessage)):
+            return lhsCode == rhsCode && lhsMessage == rhsMessage
+        default:
+            return false
+        }
+    }
 }
 
 extension AppError {
     public static func from(musicKitError error: Error) -> AppError {
-        if let musicError = error as? MusicKitError {
-            switch musicError {
-            case .notAuthorized:
-                return .musicKitNotAuthorized
-            case .permissionDenied:
-                return .musicKitPermissionDenied
-            case .notSupported:
-                return .musicKitNotAvailable
-            default:
-                return .musicKitUnknownError(musicError)
-            }
-        } else if error is URLError {
+        if error is URLError {
             return .musicKitNetworkError(error)
         } else {
             return .musicKitUnknownError(error)

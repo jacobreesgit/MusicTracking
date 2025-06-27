@@ -1,5 +1,6 @@
 import Foundation
 import MediaPlayer
+import MusicKit
 import Observation
 import UIKit
 
@@ -11,7 +12,7 @@ public final class BackgroundMusicMonitor {
     public private(set) var state: BackgroundMonitoringState = .inactive
     public private(set) var monitoringState: MonitoringState
     public private(set) var lastError: AppError?
-    public private(set) var currentSession: ListeningSession?
+    public private(set) var currentSession: DomainListeningSession?
     public private(set) var sessionCount: Int = 0
     public private(set) var totalUptime: TimeInterval = 0
     
@@ -28,14 +29,10 @@ public final class BackgroundMusicMonitor {
     private var lastPlaybackState: MPMusicPlaybackState = .stopped
     private var lastCurrentItem: MPMediaItem?
     
-    public init(
-        musicKitService: MusicKitService = MusicKitService.shared,
-        repository: MusicDataRepositoryProtocol,
-        audioSessionManager: AudioSessionManager = .shared
-    ) {
-        self.musicKitService = musicKitService
-        self.repository = repository
-        self.audioSessionManager = audioSessionManager
+    private init() {
+        self.musicKitService = MusicKitService.shared
+        self.repository = CoreDataRepository(persistenceController: PersistenceController.shared)
+        self.audioSessionManager = AudioSessionManager.shared
         
         self.monitoringState = MonitoringState(
             state: .inactive,
@@ -236,8 +233,8 @@ public final class BackgroundMusicMonitor {
         lastCurrentItem = musicPlayer.nowPlayingItem
         
         updateMonitoringState(
-            playbackState: lastPlaybackState,
-            currentSong: lastCurrentItem
+            currentSong: lastCurrentItem,
+            playbackState: lastPlaybackState
         )
         
         print("Music player monitoring setup completed")
@@ -273,8 +270,8 @@ public final class BackgroundMusicMonitor {
         }
         
         updateMonitoringState(
-            playbackState: currentPlaybackState,
-            currentSong: currentItem
+            currentSong: currentItem,
+            playbackState: currentPlaybackState
         )
     }
     
@@ -364,7 +361,7 @@ public final class BackgroundMusicMonitor {
             return
         }
         
-        let session = ListeningSession(
+        let session = DomainListeningSession(
             id: UUID(),
             song: song,
             startTime: Date(),
@@ -397,7 +394,7 @@ public final class BackgroundMusicMonitor {
     }
     
     @MainActor
-    private func pauseSession(_ session: ListeningSession) async {
+    private func pauseSession(_ session: DomainListeningSession) async {
         NotificationCenter.default.post(
             name: .listeningSessionPaused,
             object: nil,
@@ -410,7 +407,7 @@ public final class BackgroundMusicMonitor {
     }
     
     @MainActor
-    private func resumeSession(_ session: ListeningSession) async {
+    private func resumeSession(_ session: DomainListeningSession) async {
         NotificationCenter.default.post(
             name: .listeningSessionResumed,
             object: nil,
@@ -434,7 +431,7 @@ public final class BackgroundMusicMonitor {
         let songDuration = session.song.duration ?? 0
         let wasSkipped = songDuration > 0 && duration < (songDuration * 0.5)
         
-        let completedSession = ListeningSession(
+        let completedSession = DomainListeningSession(
             id: session.id,
             song: session.song,
             startTime: session.startTime,
@@ -467,7 +464,7 @@ public final class BackgroundMusicMonitor {
         print("Completed listening session: \(completedSession.song.title) (\(duration.formattedDurationMedium))")
     }
     
-    private func saveSession(_ session: ListeningSession) async {
+    private func saveSession(_ session: DomainListeningSession) async {
         do {
             try await repository.saveListeningSession(session)
             print("Saved listening session: \(session.song.title)")
@@ -484,14 +481,13 @@ public final class BackgroundMusicMonitor {
         }
         
         return Song(
-            id: MusicItemID(item.persistentID.description),
+            id: MusicItemID(rawValue: item.persistentID.description),
             title: title,
             artistName: artistName,
             albumTitle: item.albumTitle,
             duration: item.playbackDuration > 0 ? item.playbackDuration : nil,
-            releaseDate: nil,
             genreNames: item.genre.map { [$0] } ?? [],
-            isrc: nil,
+            releaseDate: nil,
             artworkURL: nil
         )
     }

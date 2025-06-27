@@ -125,7 +125,16 @@ public struct RecentlyPlayedView: View {
                     }
                     
                     if viewModel.isLoadingMore && date == groupedSessions.last?.0 {
-                        LoadingRowView()
+                        HStack {
+                            Spacer()
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            Text("Loading more...")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Spacer()
+                        }
+                        .padding(.vertical, 8)
                     }
                 } header: {
                     DateSectionHeader(
@@ -140,7 +149,7 @@ public struct RecentlyPlayedView: View {
 }
 
 private struct SessionRowView: View {
-    let session: ListeningSession
+    let session: DomainListeningSession
     
     var body: some View {
         SongRowView(

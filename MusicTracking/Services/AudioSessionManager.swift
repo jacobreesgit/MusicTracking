@@ -29,11 +29,11 @@ public final class AudioSessionManager {
             try audioSession.setCategory(
                 .ambient,
                 mode: .default,
-                options: [.mixWithOthers, .allowAirPlay, .allowBluetoothA2DP]
+                options: [.mixWithOthers]
             )
             
             currentCategory = .ambient
-            currentOptions = [.mixWithOthers, .allowAirPlay, .allowBluetoothA2DP]
+            currentOptions = [.mixWithOthers]
             isConfigured = true
             lastError = nil
             
@@ -106,7 +106,7 @@ public final class AudioSessionManager {
     
     public func requestRecordPermission() async -> Bool {
         return await withCheckedContinuation { continuation in
-            audioSession.requestRecordPermission { granted in
+            AVAudioApplication.requestRecordPermission { granted in
                 continuation.resume(returning: granted)
             }
         }

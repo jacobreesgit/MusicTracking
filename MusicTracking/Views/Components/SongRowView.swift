@@ -1,4 +1,5 @@
 import SwiftUI
+import MusicKit
 
 public struct SongRowView: View {
     let song: Song
@@ -313,7 +314,7 @@ private struct StatItem: View {
 #Preview("Song Row - Full") {
     SongRowView(
         song: Song(
-            id: MusicItemID("123"),
+            id: MusicItemID(rawValue: "123"),
             title: "Bohemian Rhapsody",
             artistName: "Queen",
             albumTitle: "A Night at the Opera",
@@ -332,7 +333,7 @@ private struct StatItem: View {
 #Preview("Song Row - Compact") {
     CompactSongRowView(
         song: Song(
-            id: MusicItemID("123"),
+            id: MusicItemID(rawValue: "123"),
             title: "Bohemian Rhapsody",
             artistName: "Queen",
             albumTitle: "A Night at the Opera"

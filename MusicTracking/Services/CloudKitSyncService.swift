@@ -146,7 +146,7 @@ public final class CloudKitSyncService {
                 keepSession.isComplete = true
             }
             
-            keepSession.playCount = duplicates.map { Int($0.playCount) }.max() ?? 1
+            keepSession.playCount = Int32(duplicates.map { Int($0.playCount) }.max() ?? 1)
         }
     }
     
@@ -155,7 +155,7 @@ public final class CloudKitSyncService {
             Calendar.current.dateInterval(of: .weekOfYear, for: stat.weekStartDate)?.start ?? stat.weekStartDate
         }
         
-        for (weekStart, duplicates) in groupedStats where duplicates.count > 1 {
+        for (_, duplicates) in groupedStats where duplicates.count > 1 {
             let sortedDuplicates = duplicates.sorted { $0.updatedAt > $1.updatedAt }
             let keepStats = sortedDuplicates.first!
             
@@ -208,7 +208,9 @@ public final class CloudKitSyncService {
         try await checkAccountStatus()
         
         do {
-            let _ = try await database.recordType(for: "CD_ListeningSession")
+            // Test CloudKit schema availability by attempting a simple query
+            let query = CKQuery(recordType: "CD_ListeningSession", predicate: NSPredicate(value: false))
+            let _ = try await database.records(matching: query, resultsLimit: 1)
         } catch {
             throw AppError.musicKitRequestFailed("CloudKit schema not found. Please ensure the app has been launched and synced at least once.")
         }
@@ -292,6 +294,10 @@ public struct SyncInfo {
     public var needsSync: Bool {
         guard let timeSince = timeSinceLastSync else { return true }
         return timeSince > 3600 // More than 1 hour
+    }
+    
+    public var requiresAttention: Bool {
+        return status.requiresAttention || error != nil
     }
 }
 

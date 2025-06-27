@@ -2,6 +2,7 @@ import Foundation
 import MusicKit
 import Observation
 import BackgroundTasks
+import UIKit
 
 @Observable
 public final class AppStateManager {
@@ -16,6 +17,7 @@ public final class AppStateManager {
     public let repository: CoreDataRepository
     public let backgroundMusicMonitor: BackgroundMusicMonitor
     public let backgroundTaskManager: BackgroundTaskManager
+    public let statisticsService: StatisticsService
     
     public private(set) var isInitialized: Bool = false
     public private(set) var isHealthy: Bool = false
@@ -31,6 +33,7 @@ public final class AppStateManager {
         self.repository = CoreDataRepository(persistenceController: persistenceController)
         self.backgroundMusicMonitor = BackgroundMusicMonitor.shared
         self.backgroundTaskManager = BackgroundTaskManager.shared
+        self.statisticsService = StatisticsService.shared
         
         configureBackgroundMonitoring()
         setupNotificationObservers()
@@ -52,7 +55,7 @@ public final class AppStateManager {
         initializationError = nil
         
         do {
-            await waitForPersistenceControllerLoad()
+            try await waitForPersistenceControllerLoad()
             
             try await authorizationService.refreshAuthorizationIfNeeded()
             await tokenManager.checkTokenValidity()
@@ -82,12 +85,12 @@ public final class AppStateManager {
         }
     }
     
-    private func waitForPersistenceControllerLoad() async {
+    private func waitForPersistenceControllerLoad() async throws {
         while !persistenceController.isLoaded {
             try? await Task.sleep(for: .milliseconds(100))
         }
         
-        if let loadError = persistenceController.loadError {
+        if persistenceController.loadError != nil {
             throw AppError.coreDataModelNotFound
         }
     }
@@ -99,7 +102,7 @@ public final class AppStateManager {
                 object: nil,
                 queue: .main
             ) { [weak self] notification in
-                guard let session = notification.object as? ListeningSession else { return }
+                guard let session = notification.object as? DomainListeningSession else { return }
                 
                 Task {
                     await self?.saveListeningSession(session)
@@ -108,11 +111,11 @@ public final class AppStateManager {
         )
     }
     
-    private func saveListeningSession(_ session: ListeningSession) async {
+    private func saveListeningSession(_ session: DomainListeningSession) async {
         do {
             try await repository.saveListeningSession(session)
             
-            let weekStart = Calendar.current.startOfWeek(for: session.startTime)
+            let _ = Calendar.current.startOfWeek(for: session.startTime)
             if Calendar.current.isInCurrentWeek(session.startTime) {
                 await updateWeeklyStatsForCurrentWeek()
             }
@@ -299,7 +302,7 @@ public final class AppStateManager {
                 guard let self = self else { return }
                 
                 Task { @MainActor in
-                    await self.handleAppDidBecomeActive()
+                    self.handleAppDidBecomeActive()
                 }
             }
         )
@@ -309,7 +312,7 @@ public final class AppStateManager {
                 guard let self = self else { return }
                 
                 Task { @MainActor in
-                    await self.handleAppWillEnterBackground()
+                    self.handleAppWillEnterBackground()
                 }
             }
         )
@@ -374,9 +377,9 @@ public final class AppStateManager {
     private func startPeriodicHealthChecks() async {
         healthCheckTask = Task {
             while !Task.isCancelled {
-                try? await Task.sleep(for: .minutes(15))
+                try? await Task.sleep(for: .seconds(15 * 60))
                 
-                await MainActor.run {
+                let _ = await MainActor.run {
                     Task {
                         await performHealthCheck()
                     }
@@ -389,15 +392,15 @@ public final class AppStateManager {
         return try await repository.getStorageInfo()
     }
     
-    public func getRecentListeningSessions(limit: Int = 50) async throws -> [ListeningSession] {
+    public func getRecentListeningSessions(limit: Int = 50) async throws -> [DomainListeningSession] {
         return try await repository.fetchRecentListeningSessions(limit: limit)
     }
     
-    public func getWeeklyStats(for weekStartDate: Date) async throws -> WeeklyStats? {
+    public func getWeeklyStats(for weekStartDate: Date) async throws -> DomainWeeklyStats? {
         return try await repository.fetchWeeklyStats(for: weekStartDate)
     }
     
-    public func getAllWeeklyStats() async throws -> [WeeklyStats] {
+    public func getAllWeeklyStats() async throws -> [DomainWeeklyStats] {
         return try await repository.fetchAllWeeklyStats()
     }
     
@@ -420,7 +423,7 @@ public struct AppStatus {
     public let tokenStatus: TokenStatus
     public let lastHealthCheck: Date?
     public let initializationError: AppError?
-    public let persistenceStatus: CloudKitSyncStatus
+    public let persistenceStatus: PersistenceStatus
     public let syncInfo: SyncInfo
     
     public var needsUserAttention: Bool {

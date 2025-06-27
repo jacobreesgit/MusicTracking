@@ -1,6 +1,7 @@
 import Foundation
 import CoreData
 import Observation
+import MusicKit
 
 @Observable
 public final class StatisticsService {
@@ -16,12 +17,9 @@ public final class StatisticsService {
     private let repository: MusicDataRepositoryProtocol
     private var calculationTask: Task<Void, Never>?
     
-    public init(
-        persistenceController: PersistenceController = .shared,
-        repository: MusicDataRepositoryProtocol
-    ) {
-        self.persistenceController = persistenceController
-        self.repository = repository
+    private init() {
+        self.persistenceController = PersistenceController.shared
+        self.repository = CoreDataRepository(persistenceController: PersistenceController.shared)
         
         print("StatisticsService initialized")
     }
@@ -107,15 +105,9 @@ public final class StatisticsService {
                 }
                 
                 let song = Song(
-                    id: MusicItemID(songID),
+                    id: MusicItemID(rawValue: songID),
                     title: title,
-                    artistName: artist,
-                    albumTitle: dict["albumTitle"] as? String,
-                    duration: dict["songDuration"] as? TimeInterval,
-                    releaseDate: nil,
-                    genreNames: [],
-                    isrc: nil,
-                    artworkURL: nil
+                    artistName: artist
                 )
                 
                 return (song, playCount)
@@ -343,40 +335,24 @@ public final class StatisticsService {
         let endDate = Date()
         let startDate = endDate.addingTimeInterval(-timeframe)
         
-        return try await performCoreDataQuery { context in
-            let request = NSFetchRequest<NSManagedObject>(entityName: "ListeningSessionEntity")
-            
-            request.predicate = NSPredicate(
-                format: "startTime >= %@ AND startTime <= %@",
-                startDate as NSDate,
-                endDate as NSDate
-            )
-            
-            // Get hourly distribution
-            let hourlyDistribution = try await getHourlyDistribution(context: context, startDate: startDate, endDate: endDate)
-            
-            // Get daily distribution
-            let dailyDistribution = try await getDailyDistribution(context: context, startDate: startDate, endDate: endDate)
-            
-            // Get average session length
-            let avgSessionLength = try await getAverageSessionLength(context: context, startDate: startDate, endDate: endDate)
-            
-            // Get skip rate
-            let skipRate = try await getSkipRate(context: context, startDate: startDate, endDate: endDate)
-            
-            return ListeningPatterns(
-                hourlyDistribution: hourlyDistribution,
-                dailyDistribution: dailyDistribution,
-                averageSessionLength: avgSessionLength,
-                skipRate: skipRate,
-                timeframe: timeframe
-            )
-        }
+        // Get each component separately using async
+        async let hourlyDistribution = getHourlyDistribution(startDate: startDate, endDate: endDate)
+        async let dailyDistribution = getDailyDistribution(startDate: startDate, endDate: endDate)
+        async let avgSessionLength = getAverageSessionLength(startDate: startDate, endDate: endDate)
+        async let skipRate = getSkipRate(startDate: startDate, endDate: endDate)
+        
+        return try await ListeningPatterns(
+            hourlyDistribution: hourlyDistribution,
+            dailyDistribution: dailyDistribution,
+            averageSessionLength: avgSessionLength,
+            skipRate: skipRate,
+            timeframe: timeframe
+        )
     }
     
     // MARK: - Weekly Stats Generation
     
-    public func generateWeeklyStats(for weekStart: Date) async throws -> WeeklyStats {
+    public func generateWeeklyStats(for weekStart: Date) async throws -> DomainWeeklyStats {
         let calendar = Calendar.current
         let weekEnd = calendar.date(byAdding: .day, value: 7, to: weekStart) ?? weekStart
         
@@ -406,23 +382,29 @@ public final class StatisticsService {
             let totalPlayTime = sessions.reduce(0) { $0 + $1.duration }
             let totalSessions = sessions.count
             let uniqueSongs = Set(sessions.map { $0.song.id }).count
-            let uniqueArtists = Set(sessions.map { $0.song.artistName }).count
-            let averageSessionLength = totalSessions > 0 ? totalPlayTime / Double(totalSessions) : 0
-            let skippedSessions = sessions.filter { $0.wasSkipped }.count
-            let skipRate = totalSessions > 0 ? Double(skippedSessions) / Double(totalSessions) : 0
+            // Removed unused variables: uniqueArtists, averageSessionLength, skipRate
             
-            let weeklyStats = WeeklyStats(
+            let weeklyStats = DomainWeeklyStats(
                 weekStartDate: weekStart,
                 totalPlayTime: totalPlayTime,
-                totalSessions: totalSessions,
-                uniqueSongs: uniqueSongs,
-                uniqueArtists: uniqueArtists,
-                averageSessionLength: averageSessionLength,
-                skipRate: skipRate,
-                topSongs: topSongs.map { $0.0 },
-                topArtists: topArtists.map { $0.0 },
-                dailyBreakdown: calculateDailyBreakdown(sessions: sessions, weekStart: weekStart),
-                generatedAt: Date()
+                uniqueSongsCount: uniqueSongs,
+                topSongs: topSongs.map { song, count in
+                    TopSongData(
+                        songID: song.id.rawValue,
+                        title: song.title,
+                        artistName: song.artistName,
+                        playCount: count,
+                        totalPlayTime: 0 // We don't have individual song play time available
+                    )
+                },
+                topArtists: topArtists.map { artist, count in
+                    TopArtistData(
+                        artistName: artist,
+                        playCount: count,
+                        totalPlayTime: 0, // We don't have individual artist play time available
+                        uniqueSongsCount: 1 // We don't have unique songs count per artist available
+                    )
+                }
             )
             
             try await repository.saveWeeklyStats(weeklyStats)
@@ -496,99 +478,94 @@ public final class StatisticsService {
     // MARK: - Helper Methods
     
     private func performCoreDataQuery<T>(_ query: @escaping (NSManagedObjectContext) throws -> T) async throws -> T {
-        return try await withCheckedThrowingContinuation { continuation in
-            persistenceController.performBackgroundTask { context in
-                do {
-                    let result = try query(context)
-                    continuation.resume(returning: result)
-                } catch {
-                    continuation.resume(throwing: error)
-                }
-            }
-        }
+        return try await persistenceController.performBackgroundTask(query)
     }
     
-    private func getHourlyDistribution(context: NSManagedObjectContext, startDate: Date, endDate: Date) async throws -> [Int: Int] {
+    private func getHourlyDistribution(startDate: Date, endDate: Date) async throws -> [Int: Int] {
         // Implementation for hourly distribution
         return [:]
     }
     
-    private func getDailyDistribution(context: NSManagedObjectContext, startDate: Date, endDate: Date) async throws -> [Int: Int] {
+    private func getDailyDistribution(startDate: Date, endDate: Date) async throws -> [Int: Int] {
         // Implementation for daily distribution (0 = Sunday, 1 = Monday, etc.)
         return [:]
     }
     
-    private func getAverageSessionLength(context: NSManagedObjectContext, startDate: Date, endDate: Date) async throws -> TimeInterval {
-        let request = NSFetchRequest<NSManagedObject>(entityName: "ListeningSessionEntity")
-        request.predicate = NSPredicate(
-            format: "startTime >= %@ AND startTime <= %@",
-            startDate as NSDate,
-            endDate as NSDate
-        )
-        
-        let avgExpression = NSExpressionDescription()
-        avgExpression.name = "averageDuration"
-        avgExpression.expression = NSExpression(forFunction: "average:", arguments: [NSExpression(forKeyPath: "duration")])
-        avgExpression.expressionResultType = .doubleAttributeType
-        
-        request.propertiesToFetch = [avgExpression]
-        request.resultType = .dictionaryResultType
-        
-        let results = try context.fetch(request)
-        
-        if let firstResult = results.first as? [String: Any],
-           let average = firstResult["averageDuration"] as? TimeInterval {
-            return average
-        }
-        
-        return 0
-    }
-    
-    private func getSkipRate(context: NSManagedObjectContext, startDate: Date, endDate: Date) async throws -> Double {
-        let totalRequest = NSFetchRequest<NSManagedObject>(entityName: "ListeningSessionEntity")
-        totalRequest.predicate = NSPredicate(
-            format: "startTime >= %@ AND startTime <= %@",
-            startDate as NSDate,
-            endDate as NSDate
-        )
-        
-        let totalCountExpression = NSExpressionDescription()
-        totalCountExpression.name = "totalCount"
-        totalCountExpression.expression = NSExpression(forFunction: "count:", arguments: [NSExpression(forKeyPath: "startTime")])
-        totalCountExpression.expressionResultType = .integer32AttributeType
-        
-        totalRequest.propertiesToFetch = [totalCountExpression]
-        totalRequest.resultType = .dictionaryResultType
-        
-        let totalResults = try context.fetch(totalRequest)
-        guard let totalDict = totalResults.first as? [String: Any],
-              let totalCount = totalDict["totalCount"] as? Int,
-              totalCount > 0 else {
+    private func getAverageSessionLength(startDate: Date, endDate: Date) async throws -> TimeInterval {
+        return try await performCoreDataQuery { context in
+            let request = NSFetchRequest<NSManagedObject>(entityName: "ListeningSessionEntity")
+            request.predicate = NSPredicate(
+                format: "startTime >= %@ AND startTime <= %@",
+                startDate as NSDate,
+                endDate as NSDate
+            )
+            
+            let avgExpression = NSExpressionDescription()
+            avgExpression.name = "averageDuration"
+            avgExpression.expression = NSExpression(forFunction: "average:", arguments: [NSExpression(forKeyPath: "duration")])
+            avgExpression.expressionResultType = .doubleAttributeType
+            
+            request.propertiesToFetch = [avgExpression]
+            request.resultType = .dictionaryResultType
+            
+            let results = try context.fetch(request)
+            
+            if let firstResult = results.first as? [String: Any],
+               let average = firstResult["averageDuration"] as? TimeInterval {
+                return average
+            }
+            
             return 0
         }
-        
-        let skippedRequest = NSFetchRequest<NSManagedObject>(entityName: "ListeningSessionEntity")
-        skippedRequest.predicate = NSPredicate(
-            format: "startTime >= %@ AND startTime <= %@ AND wasSkipped == YES",
-            startDate as NSDate,
-            endDate as NSDate
-        )
-        
-        let skippedCountExpression = NSExpressionDescription()
-        skippedCountExpression.name = "skippedCount"
-        skippedCountExpression.expression = NSExpression(forFunction: "count:", arguments: [NSExpression(forKeyPath: "startTime")])
-        skippedCountExpression.expressionResultType = .integer32AttributeType
-        
-        skippedRequest.propertiesToFetch = [skippedCountExpression]
-        skippedRequest.resultType = .dictionaryResultType
-        
-        let skippedResults = try context.fetch(skippedRequest)
-        let skippedCount = (skippedResults.first as? [String: Any])?["skippedCount"] as? Int ?? 0
-        
-        return Double(skippedCount) / Double(totalCount)
     }
     
-    private func calculateDailyBreakdown(sessions: [ListeningSession], weekStart: Date) -> [Date: DailyStats] {
+    private func getSkipRate(startDate: Date, endDate: Date) async throws -> Double {
+        return try await performCoreDataQuery { context in
+            let totalRequest = NSFetchRequest<NSManagedObject>(entityName: "ListeningSessionEntity")
+            totalRequest.predicate = NSPredicate(
+                format: "startTime >= %@ AND startTime <= %@",
+                startDate as NSDate,
+                endDate as NSDate
+            )
+            
+            let totalCountExpression = NSExpressionDescription()
+            totalCountExpression.name = "totalCount"
+            totalCountExpression.expression = NSExpression(forFunction: "count:", arguments: [NSExpression(forKeyPath: "startTime")])
+            totalCountExpression.expressionResultType = .integer32AttributeType
+            
+            totalRequest.propertiesToFetch = [totalCountExpression]
+            totalRequest.resultType = .dictionaryResultType
+            
+            let totalResults = try context.fetch(totalRequest)
+            guard let totalDict = totalResults.first as? [String: Any],
+                  let totalCount = totalDict["totalCount"] as? Int,
+                  totalCount > 0 else {
+                return 0
+            }
+            
+            let skippedRequest = NSFetchRequest<NSManagedObject>(entityName: "ListeningSessionEntity")
+            skippedRequest.predicate = NSPredicate(
+                format: "startTime >= %@ AND startTime <= %@ AND wasSkipped == YES",
+                startDate as NSDate,
+                endDate as NSDate
+            )
+            
+            let skippedCountExpression = NSExpressionDescription()
+            skippedCountExpression.name = "skippedCount"
+            skippedCountExpression.expression = NSExpression(forFunction: "count:", arguments: [NSExpression(forKeyPath: "startTime")])
+            skippedCountExpression.expressionResultType = .integer32AttributeType
+            
+            skippedRequest.propertiesToFetch = [skippedCountExpression]
+            skippedRequest.resultType = .dictionaryResultType
+            
+            let skippedResults = try context.fetch(skippedRequest)
+            let skippedCount = (skippedResults.first as? [String: Any])?["skippedCount"] as? Int ?? 0
+            
+            return Double(skippedCount) / Double(totalCount)
+        }
+    }
+    
+    private func calculateDailyBreakdown(sessions: [DomainListeningSession], weekStart: Date) -> [Date: DailyStats] {
         let calendar = Calendar.current
         var dailyBreakdown: [Date: DailyStats] = [:]
         

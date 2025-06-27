@@ -122,7 +122,7 @@ public struct ToastErrorModifier: ViewModifier {
                 },
                 alignment: .top
             )
-            .onChange(of: error) { newError in
+            .onChange(of: error) { _, newError in
                 if newError != nil {
                     withAnimation(.spring()) {
                         showToast = true

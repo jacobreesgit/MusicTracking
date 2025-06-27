@@ -1,6 +1,7 @@
 import Foundation
 import MusicKit
 import Observation
+import UIKit
 
 @Observable
 public final class MusicKitService {
@@ -9,14 +10,14 @@ public final class MusicKitService {
     
     public private(set) var isAuthorized: Bool = false
     public private(set) var currentSong: Song?
-    public private(set) var playbackState: MusicPlayer.PlaybackStatus = .stopped
+    public private(set) var playbackState: ApplicationMusicPlayer.PlaybackStatus = .stopped
     public private(set) var isTracking: Bool = false
     public private(set) var supportsBackgroundMonitoring: Bool = false
     public private(set) var backgroundMonitoringEnabled: Bool = false
     
-    private let player = MusicPlayer.shared
+    private let player = ApplicationMusicPlayer.shared
     private var playbackObservationTask: Task<Void, Never>?
-    private var currentListeningSession: ListeningSession?
+    private var currentListeningSession: DomainListeningSession?
     private var backgroundMonitor: BackgroundMusicMonitor?
     
     public init() {
@@ -64,15 +65,26 @@ public final class MusicKitService {
             throw AppError.musicKitNotAuthorized
         }
         
-        do {
-            guard let currentEntry = player.queue.currentEntry,
-                  let song = currentEntry.item else {
-                return nil
-            }
-            
-            return Song(from: song)
-        } catch {
-            throw AppError.from(musicKitError: error)
+        guard let currentEntry = player.queue.currentEntry else {
+            return nil
+        }
+        
+        // Extract song information from the queue entry
+        guard let item = currentEntry.item else {
+            return nil
+        }
+        
+        // Handle different types of MusicKit items
+        switch item {
+        case let song as MusicKit.Song:
+            return Song(
+                id: song.id,
+                title: song.title,
+                artistName: song.artistName
+            )
+        default:
+            // For other item types, try to extract song information if available
+            return nil
         }
     }
     
@@ -82,14 +94,15 @@ public final class MusicKitService {
         }
         
         do {
-            let request = MusicRecentlyPlayedRequest()
+            let request = MusicRecentlyPlayedRequest<MusicKit.Song>()
             let response = try await request.response()
             
-            return response.items.compactMap { item in
-                if case .song(let song) = item {
-                    return Song(from: song)
-                }
-                return nil
+            return response.items.compactMap { song in
+                Song(
+                    id: song.id,
+                    title: song.title,
+                    artistName: song.artistName
+                )
             }.prefix(limit).map { $0 }
         } catch {
             throw AppError.from(musicKitError: error)
@@ -106,11 +119,17 @@ public final class MusicKitService {
         }
         
         do {
-            var request = MusicCatalogSearchRequest(term: query, types: [Song.self])
+            var request = MusicCatalogSearchRequest(term: query, types: [MusicKit.Song.self])
             request.limit = limit
             
             let response = try await request.response()
-            return response.songs.compactMap { Song(from: $0) }
+            return response.songs.compactMap { song in
+                Song(
+                    id: song.id,
+                    title: song.title,
+                    artistName: song.artistName
+                )
+            }
         } catch {
             throw AppError.from(musicKitError: error)
         }
@@ -125,7 +144,13 @@ public final class MusicKitService {
             let request = MusicCatalogResourceRequest<MusicKit.Song>(matching: \.id, equalTo: songID)
             let response = try await request.response()
             
-            return response.items.first.map { Song(from: $0) }
+            return response.items.first.map { song in
+                Song(
+                    id: song.id,
+                    title: song.title,
+                    artistName: song.artistName
+                )
+            }
         } catch {
             throw AppError.from(musicKitError: error)
         }
@@ -141,7 +166,13 @@ public final class MusicKitService {
             request.limit = limit
             
             let response = try await request.response()
-            return response.items.compactMap { Song(from: $0) }
+            return response.items.compactMap { song in
+                Song(
+                    id: song.id,
+                    title: song.title,
+                    artistName: song.artistName
+                )
+            }
         } catch {
             throw AppError.from(musicKitError: error)
         }
@@ -161,17 +192,24 @@ public final class MusicKitService {
     
     private func startPlaybackObservation() async {
         playbackObservationTask = Task {
-            for await playbackStatus in player.state.playbackStatus.values {
-                await MainActor.run {
-                    self.playbackState = playbackStatus
-                    self.handlePlaybackStateChange(playbackStatus)
+            // Observe playback status changes
+            var lastStatus = player.state.playbackStatus
+            while !Task.isCancelled {
+                let currentStatus = player.state.playbackStatus
+                if currentStatus != lastStatus {
+                    await MainActor.run {
+                        self.playbackState = currentStatus
+                        self.handlePlaybackStateChange(currentStatus)
+                    }
+                    lastStatus = currentStatus
                 }
+                try? await Task.sleep(for: .milliseconds(500))
             }
         }
     }
     
     @MainActor
-    private func handlePlaybackStateChange(_ status: MusicPlayer.PlaybackStatus) {
+    private func handlePlaybackStateChange(_ status: ApplicationMusicPlayer.PlaybackStatus) {
         guard isTracking else { return }
         
         switch status {
@@ -193,7 +231,7 @@ public final class MusicKitService {
             await MainActor.run {
                 finishCurrentSession()
                 
-                let session = ListeningSession(
+                let session = DomainListeningSession(
                     song: song,
                     startTime: Date(),
                     duration: song.duration ?? 0
@@ -220,7 +258,7 @@ public final class MusicKitService {
         let actualDuration = endTime.timeIntervalSince(session.startTime)
         let wasSkipped = actualDuration < (session.duration * 0.8)
         
-        let completedSession = ListeningSession(
+        let completedSession = DomainListeningSession(
             id: session.id,
             song: session.song,
             startTime: session.startTime,

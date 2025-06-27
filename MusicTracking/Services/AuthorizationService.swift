@@ -130,7 +130,7 @@ public final class AuthorizationService {
     private func startAuthorizationObservation() async {
         authorizationObservationTask = Task {
             while !Task.isCancelled {
-                await MainActor.run {
+                _ = await MainActor.run {
                     Task {
                         await checkCurrentStatus()
                     }

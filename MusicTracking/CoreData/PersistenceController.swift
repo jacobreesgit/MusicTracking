@@ -212,7 +212,7 @@ public final class PersistenceController {
     }
     
     public func getStorageInfo() async throws -> StorageInfo {
-        return try await performBackgroundTask { context in
+        return try await performBackgroundTask { [self] context in
             let listeningSessionRequest: NSFetchRequest<ListeningSessionEntity> = ListeningSessionEntity.fetchRequest()
             let weeklyStatsRequest: NSFetchRequest<WeeklyStatsEntity> = WeeklyStatsEntity.fetchRequest()
             
@@ -243,7 +243,7 @@ public final class PersistenceController {
     
     public func initializeCloudKitSchema() async throws {
         do {
-            try await container.initializeCloudKitSchema(options: [])
+            try container.initializeCloudKitSchema(options: [])
             print("CloudKit schema initialized successfully")
         } catch {
             print("Failed to initialize CloudKit schema: \(error)")
@@ -251,8 +251,8 @@ public final class PersistenceController {
         }
     }
     
-    public func getSyncStatus() -> CloudKitSyncStatus {
-        return CloudKitSyncStatus(
+    public func getSyncStatus() -> PersistenceStatus {
+        return PersistenceStatus(
             isLoaded: isLoaded,
             isSyncing: isSyncing,
             lastSyncDate: lastSyncDate,
@@ -261,7 +261,7 @@ public final class PersistenceController {
     }
 }
 
-public struct CloudKitSyncStatus {
+public struct PersistenceStatus {
     public let isLoaded: Bool
     public let isSyncing: Bool
     public let lastSyncDate: Date?

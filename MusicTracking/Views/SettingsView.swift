@@ -208,13 +208,13 @@ public struct SettingsView: View {
                 
                 Spacer()
                 
-                if syncInfo.isInProgress {
+                if syncInfo.isManualSyncInProgress {
                     ProgressView()
                         .scaleEffect(0.8)
                 }
             }
             
-            if let lastSync = syncInfo.lastSuccessfulSync {
+            if let lastSync = syncInfo.lastSyncDate {
                 HStack {
                     Image(systemName: "clock")
                         .foregroundColor(.secondary)
@@ -240,7 +240,7 @@ public struct SettingsView: View {
                     Text("Sync Now")
                 }
             }
-            .disabled(syncInfo.isInProgress)
+            .disabled(syncInfo.isManualSyncInProgress)
         }
     }
     
@@ -307,9 +307,10 @@ public struct SettingsView: View {
     
     private func deleteAllData() async {
         do {
-            try await appStateManager.repository.deleteAllData()
+            try await appStateManager.repository.deleteAllListeningSessions()
+            try await appStateManager.repository.deleteAllWeeklyStats()
         } catch {
-            exportError = error as? AppError ?? AppError.coreDataSaveFailed("Failed to delete data")
+            exportError = error as? AppError ?? AppError.coreDataSaveFailed(error)
         }
     }
     

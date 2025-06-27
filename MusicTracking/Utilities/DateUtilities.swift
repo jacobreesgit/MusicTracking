@@ -1,6 +1,6 @@
 import Foundation
 
-public struct DateUtilities {
+public class DateUtilities {
     
     public static let shared = DateUtilities()
     
@@ -64,7 +64,7 @@ extension Calendar {
     
     public func endOfWeek(for date: Date) -> Date {
         let interval = dateInterval(of: .weekOfYear, for: date)
-        return interval?.end?.addingTimeInterval(-1) ?? date
+        return interval?.end.addingTimeInterval(-1) ?? date
     }
     
     public func isInCurrentWeek(_ date: Date) -> Bool {

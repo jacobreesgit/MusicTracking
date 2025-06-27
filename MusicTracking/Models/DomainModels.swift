@@ -46,7 +46,7 @@ public struct Artist {
     public init(from musicKitArtist: MusicKit.Artist) {
         self.id = musicKitArtist.id
         self.name = musicKitArtist.name
-        self.genreNames = musicKitArtist.genreNames
+        self.genreNames = musicKitArtist.genreNames ?? []
         self.artworkURL = musicKitArtist.artwork?.url(width: 300, height: 300)
     }
     
@@ -91,7 +91,7 @@ public struct Album {
     }
 }
 
-public struct ListeningSession {
+public struct DomainListeningSession {
     public let id: UUID
     public let song: Song
     public let startTime: Date
@@ -160,13 +160,13 @@ extension Album: Hashable {
     }
 }
 
-extension ListeningSession: Equatable {
-    public static func == (lhs: ListeningSession, rhs: ListeningSession) -> Bool {
+extension DomainListeningSession: Equatable {
+    public static func == (lhs: DomainListeningSession, rhs: DomainListeningSession) -> Bool {
         lhs.id == rhs.id
     }
 }
 
-extension ListeningSession: Hashable {
+extension DomainListeningSession: Hashable {
     public func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }

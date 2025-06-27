@@ -1,10 +1,11 @@
 import Foundation
 import Observation
+import MusicKit
 
 @Observable
 public final class WeeklyTopViewModel {
     
-    public private(set) var weeklyStats: WeeklyStats?
+    public private(set) var weeklyStats: DomainWeeklyStats?
     public private(set) var topSongs: [(Song, Int)] = []
     public private(set) var isLoading: Bool = false
     public private(set) var error: AppError?
@@ -37,7 +38,7 @@ public final class WeeklyTopViewModel {
             if let stats = weeklyStats {
                 topSongs = stats.topSongs.map { topSongData in
                     let song = Song(
-                        id: MusicItemID(topSongData.songID),
+                        id: MusicItemID(rawValue: topSongData.songID),
                         title: topSongData.title,
                         artistName: topSongData.artistName
                     )
@@ -133,7 +134,7 @@ public final class WeeklyTopViewModel {
     }
     
     public func compareWithPreviousWeek() -> WeekComparison? {
-        guard let currentStats = weeklyStats else { return nil }
+        guard weeklyStats != nil else { return nil }
         
         let previousWeek = selectedWeek.previous()
         
@@ -174,13 +175,12 @@ public final class WeeklyTopViewModel {
         }
         
         let topArtistsCount = stats.topArtists.count
-        let avgSessionDuration = stats.averageSessionDuration
         
         return (
             playTime: stats.totalPlayTime.formattedDurationMedium,
             songs: "\(stats.uniqueSongsCount)",
             artists: "\(topArtistsCount)",
-            avgSession: avgSessionDuration.formattedDurationShort
+            avgSession: "N/A"
         )
     }
     
@@ -195,7 +195,6 @@ public final class WeeklyTopViewModel {
     public var weekProgress: Double {
         guard selectedWeek.isCurrentWeek else { return 1.0 }
         
-        let calendar = Calendar.current
         let now = Date()
         let weekStart = selectedWeek.startDate
         let weekEnd = selectedWeek.endDate
