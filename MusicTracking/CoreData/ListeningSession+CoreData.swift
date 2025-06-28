@@ -6,7 +6,7 @@ import MusicKit
 public class ListeningSessionEntity: NSManagedObject {
     
     @nonobjc public class func fetchRequest() -> NSFetchRequest<ListeningSessionEntity> {
-        return NSFetchRequest<ListeningSessionEntity>(entityName: "ListeningSession")
+        return NSFetchRequest<ListeningSessionEntity>(entityName: "ListeningSessionEntity")
     }
     
     @NSManaged public var id: UUID
@@ -185,7 +185,7 @@ extension ListeningSessionEntity {
         limit: Int = 10,
         in context: NSManagedObjectContext
     ) -> NSFetchRequest<NSDictionary> {
-        let request = NSFetchRequest<NSDictionary>(entityName: "ListeningSession")
+        let request = NSFetchRequest<NSDictionary>(entityName: "ListeningSessionEntity")
         request.predicate = NSPredicate(
             format: "timestamp >= %@ AND timestamp <= %@",
             startDate as NSDate,
@@ -220,7 +220,7 @@ extension ListeningSessionEntity {
         limit: Int = 10,
         in context: NSManagedObjectContext
     ) -> NSFetchRequest<NSDictionary> {
-        let request = NSFetchRequest<NSDictionary>(entityName: "ListeningSession")
+        let request = NSFetchRequest<NSDictionary>(entityName: "ListeningSessionEntity")
         request.predicate = NSPredicate(
             format: "timestamp >= %@ AND timestamp <= %@",
             startDate as NSDate,
@@ -255,7 +255,7 @@ extension ListeningSessionEntity {
         to endDate: Date,
         in context: NSManagedObjectContext
     ) -> NSFetchRequest<NSDictionary> {
-        let request = NSFetchRequest<NSDictionary>(entityName: "ListeningSession")
+        let request = NSFetchRequest<NSDictionary>(entityName: "ListeningSessionEntity")
         request.predicate = NSPredicate(
             format: "timestamp >= %@ AND timestamp <= %@",
             startDate as NSDate,

@@ -5,7 +5,7 @@ import CoreData
 public class WeeklyStatsEntity: NSManagedObject {
     
     @nonobjc public class func fetchRequest() -> NSFetchRequest<WeeklyStatsEntity> {
-        return NSFetchRequest<WeeklyStatsEntity>(entityName: "WeeklyStats")
+        return NSFetchRequest<WeeklyStatsEntity>(entityName: "WeeklyStatsEntity")
     }
     
     @NSManaged public var id: UUID
@@ -190,7 +190,7 @@ extension WeeklyStatsEntity {
     public static func calculateAverageWeeklyPlayTime(
         in context: NSManagedObjectContext
     ) -> NSFetchRequest<NSDictionary> {
-        let request = NSFetchRequest<NSDictionary>(entityName: "WeeklyStats")
+        let request = NSFetchRequest<NSDictionary>(entityName: "WeeklyStatsEntity")
         request.resultType = .dictionaryResultType
         
         let avgExpression = NSExpression(forFunction: "average:", arguments: [NSExpression(forKeyPath: "totalPlayTime")])
