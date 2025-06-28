@@ -6,7 +6,7 @@
         <attribute name="artworkURL" optional="YES" attributeType="String"/>
         <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="duration" attributeType="Double" defaultValueString="0" usesScalarValueType="YES"/>
-        <attribute name="genreNames" optional="YES" attributeType="Transformable" valueTransformerName="NSSecureUnarchiveFromDataTransformer" customClassName="[String]"/>
+        <attribute name="genreNames" optional="YES" attributeType="Transformable" valueTransformerName="NSSecureUnarchiveFromDataTransformer"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="isComplete" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
         <attribute name="isExplicit" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
