@@ -39,7 +39,7 @@ public final class StatisticsService {
             
             // Filter by date range
             request.predicate = NSPredicate(
-                format: "startTime >= %@ AND startTime <= %@",
+                format: "timestamp >= %@ AND timestamp <= %@",
                 startDate as NSDate,
                 endDate as NSDate
             )
@@ -63,17 +63,17 @@ public final class StatisticsService {
             
             let artistExpression = NSExpressionDescription()
             artistExpression.name = "artistName"
-            artistExpression.expression = NSExpression(forKeyPath: "artistName")
+            artistExpression.expression = NSExpression(forKeyPath: "artist")
             artistExpression.expressionResultType = .stringAttributeType
             
             let albumExpression = NSExpressionDescription()
             albumExpression.name = "albumTitle"
-            albumExpression.expression = NSExpression(forKeyPath: "albumTitle")
+            albumExpression.expression = NSExpression(forKeyPath: "album")
             albumExpression.expressionResultType = .stringAttributeType
             
             let durationExpression = NSExpressionDescription()
-            durationExpression.name = "songDuration"
-            durationExpression.expression = NSExpression(forKeyPath: "songDuration")
+            durationExpression.name = "duration"
+            durationExpression.expression = NSExpression(forKeyPath: "duration")
             durationExpression.expressionResultType = .doubleAttributeType
             
             request.propertiesToFetch = [
@@ -84,7 +84,7 @@ public final class StatisticsService {
                 albumExpression,
                 durationExpression
             ]
-            request.propertiesToGroupBy = ["songID", "songTitle", "artistName", "albumTitle", "songDuration"]
+            request.propertiesToGroupBy = ["songID", "songTitle", "artist", "album", "duration"]
             request.resultType = .dictionaryResultType
             request.fetchLimit = limit
             
@@ -100,7 +100,7 @@ public final class StatisticsService {
                       let songID = dict["songID"] as? String,
                       let playCount = dict["playCount"] as? Int,
                       let title = dict["songTitle"] as? String,
-                      let artist = dict["artistName"] as? String else {
+                      let artist = dict["artist"] as? String else {
                     return nil
                 }
                 
@@ -125,23 +125,23 @@ public final class StatisticsService {
             let request = NSFetchRequest<NSManagedObject>(entityName: "ListeningSessionEntity")
             
             request.predicate = NSPredicate(
-                format: "startTime >= %@ AND startTime <= %@",
+                format: "timestamp >= %@ AND timestamp <= %@",
                 startDate as NSDate,
                 endDate as NSDate
             )
             
             let artistExpression = NSExpressionDescription()
             artistExpression.name = "artistName"
-            artistExpression.expression = NSExpression(forKeyPath: "artistName")
+            artistExpression.expression = NSExpression(forKeyPath: "artist")
             artistExpression.expressionResultType = .stringAttributeType
             
             let countExpression = NSExpressionDescription()
             countExpression.name = "playCount"
-            countExpression.expression = NSExpression(forFunction: "count:", arguments: [NSExpression(forKeyPath: "artistName")])
+            countExpression.expression = NSExpression(forFunction: "count:", arguments: [NSExpression(forKeyPath: "artist")])
             countExpression.expressionResultType = .integer32AttributeType
             
             request.propertiesToFetch = [artistExpression, countExpression]
-            request.propertiesToGroupBy = ["artistName"]
+            request.propertiesToGroupBy = ["artist"]
             request.resultType = .dictionaryResultType
             request.fetchLimit = limit
             request.sortDescriptors = [
@@ -152,7 +152,7 @@ public final class StatisticsService {
             
             return results.compactMap { result -> (String, Int)? in
                 guard let dict = result as? [String: Any],
-                      let artistName = dict["artistName"] as? String,
+                      let artistName = dict["artist"] as? String,
                       let playCount = dict["playCount"] as? Int else {
                     return nil
                 }
@@ -171,28 +171,28 @@ public final class StatisticsService {
             let request = NSFetchRequest<NSManagedObject>(entityName: "ListeningSessionEntity")
             
             request.predicate = NSPredicate(
-                format: "startTime >= %@ AND startTime <= %@ AND albumTitle != nil",
+                format: "timestamp >= %@ AND timestamp <= %@ AND album != nil",
                 startDate as NSDate,
                 endDate as NSDate
             )
             
             let albumExpression = NSExpressionDescription()
             albumExpression.name = "albumTitle"
-            albumExpression.expression = NSExpression(forKeyPath: "albumTitle")
+            albumExpression.expression = NSExpression(forKeyPath: "album")
             albumExpression.expressionResultType = .stringAttributeType
             
             let artistExpression = NSExpressionDescription()
             artistExpression.name = "artistName"
-            artistExpression.expression = NSExpression(forKeyPath: "artistName")
+            artistExpression.expression = NSExpression(forKeyPath: "artist")
             artistExpression.expressionResultType = .stringAttributeType
             
             let countExpression = NSExpressionDescription()
             countExpression.name = "playCount"
-            countExpression.expression = NSExpression(forFunction: "count:", arguments: [NSExpression(forKeyPath: "albumTitle")])
+            countExpression.expression = NSExpression(forFunction: "count:", arguments: [NSExpression(forKeyPath: "album")])
             countExpression.expressionResultType = .integer32AttributeType
             
             request.propertiesToFetch = [albumExpression, artistExpression, countExpression]
-            request.propertiesToGroupBy = ["albumTitle", "artistName"]
+            request.propertiesToGroupBy = ["album", "artist"]
             request.resultType = .dictionaryResultType
             request.fetchLimit = limit
             request.sortDescriptors = [
@@ -203,8 +203,8 @@ public final class StatisticsService {
             
             return results.compactMap { result -> (String, String, Int)? in
                 guard let dict = result as? [String: Any],
-                      let albumTitle = dict["albumTitle"] as? String,
-                      let artistName = dict["artistName"] as? String,
+                      let albumTitle = dict["album"] as? String,
+                      let artistName = dict["artist"] as? String,
                       let playCount = dict["playCount"] as? Int else {
                     return nil
                 }
@@ -223,7 +223,7 @@ public final class StatisticsService {
             let request = NSFetchRequest<NSManagedObject>(entityName: "ListeningSessionEntity")
             
             request.predicate = NSPredicate(
-                format: "startTime >= %@ AND startTime <= %@",
+                format: "timestamp >= %@ AND timestamp <= %@",
                 startDate as NSDate,
                 endDate as NSDate
             )
@@ -236,7 +236,7 @@ public final class StatisticsService {
                 arguments: [
                     NSExpression(forFunction: "truncateTowardZero:", arguments: [
                         NSExpression(forFunction: "divide:by:", arguments: [
-                            NSExpression(forKeyPath: "startTime.timeIntervalSince1970"),
+                            NSExpression(forKeyPath: "timestamp.timeIntervalSince1970"),
                             NSExpression(forConstantValue: 86400.0)
                         ])
                     ]),
@@ -296,7 +296,7 @@ public final class StatisticsService {
                 arguments: [
                     NSExpression(forFunction: "truncateTowardZero:", arguments: [
                         NSExpression(forFunction: "divide:by:", arguments: [
-                            NSExpression(forKeyPath: "startTime.timeIntervalSince1970"),
+                            NSExpression(forKeyPath: "timestamp.timeIntervalSince1970"),
                             NSExpression(forConstantValue: 3600.0)
                         ])
                     ]),
@@ -307,7 +307,7 @@ public final class StatisticsService {
             
             let sessionCountExpression = NSExpressionDescription()
             sessionCountExpression.name = "sessionCount"
-            sessionCountExpression.expression = NSExpression(forFunction: "count:", arguments: [NSExpression(forKeyPath: "startTime")])
+            sessionCountExpression.expression = NSExpression(forFunction: "count:", arguments: [NSExpression(forKeyPath: "timestamp")])
             sessionCountExpression.expressionResultType = .integer32AttributeType
             
             request.propertiesToFetch = [hourExpression, sessionCountExpression]
@@ -495,7 +495,7 @@ public final class StatisticsService {
         return try await performCoreDataQuery { context in
             let request = NSFetchRequest<NSManagedObject>(entityName: "ListeningSessionEntity")
             request.predicate = NSPredicate(
-                format: "startTime >= %@ AND startTime <= %@",
+                format: "timestamp >= %@ AND timestamp <= %@",
                 startDate as NSDate,
                 endDate as NSDate
             )
@@ -523,14 +523,14 @@ public final class StatisticsService {
         return try await performCoreDataQuery { context in
             let totalRequest = NSFetchRequest<NSManagedObject>(entityName: "ListeningSessionEntity")
             totalRequest.predicate = NSPredicate(
-                format: "startTime >= %@ AND startTime <= %@",
+                format: "timestamp >= %@ AND timestamp <= %@",
                 startDate as NSDate,
                 endDate as NSDate
             )
             
             let totalCountExpression = NSExpressionDescription()
             totalCountExpression.name = "totalCount"
-            totalCountExpression.expression = NSExpression(forFunction: "count:", arguments: [NSExpression(forKeyPath: "startTime")])
+            totalCountExpression.expression = NSExpression(forFunction: "count:", arguments: [NSExpression(forKeyPath: "timestamp")])
             totalCountExpression.expressionResultType = .integer32AttributeType
             
             totalRequest.propertiesToFetch = [totalCountExpression]
@@ -552,7 +552,7 @@ public final class StatisticsService {
             
             let skippedCountExpression = NSExpressionDescription()
             skippedCountExpression.name = "skippedCount"
-            skippedCountExpression.expression = NSExpression(forFunction: "count:", arguments: [NSExpression(forKeyPath: "startTime")])
+            skippedCountExpression.expression = NSExpression(forFunction: "count:", arguments: [NSExpression(forKeyPath: "timestamp")])
             skippedCountExpression.expressionResultType = .integer32AttributeType
             
             skippedRequest.propertiesToFetch = [skippedCountExpression]
