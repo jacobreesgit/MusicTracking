@@ -53,25 +53,51 @@ public final class AppStateManager {
         guard !isInitialized else { return }
         
         initializationError = nil
+        print("Starting app initialization...")
         
         do {
+            // Step 1: Wait for Core Data to be ready
             try await waitForPersistenceControllerLoad()
+            print("✓ Core Data loaded")
             
-            try await authorizationService.refreshAuthorizationIfNeeded()
+            // Step 2: Initialize authorization service with proper timing
+            await authorizationService.startInitialization()
+            await authorizationService.waitForInitialCheck()
+            print("✓ Authorization service initialized")
+            
+            // Step 3: Check token validity
             await tokenManager.checkTokenValidity()
+            print("✓ Token manager checked")
             
+            // Step 4: Handle authorization-dependent services
             if authorizationService.isAuthorized {
+                print("✓ MusicKit authorized - starting tracking services")
                 musicKitService.startListeningTracking()
                 setupListeningSessionObservers()
                 
-                try await enableBackgroundMonitoring()
+                // Try to enable background monitoring with better error handling
+                do {
+                    try await enableBackgroundMonitoring()
+                    print("✓ Background monitoring enabled")
+                } catch {
+                    print("⚠️ Background monitoring failed but continuing: \(error)")
+                    // Don't fail initialization if background monitoring fails
+                }
+            } else if !authorizationService.isFirstTimeUser() {
+                // Only show warning for returning users who have lost authorization
+                print("⚠️ MusicKit authorization lost - tracking services disabled")
+            } else {
+                // First-time users - silent initialization
+                print("ℹ️ First-time user - tracking services will start after authorization")
             }
             
+            // Step 5: Register background tasks and start health monitoring
             backgroundTaskManager.registerBackgroundTasks()
             await performHealthCheck()
             await startPeriodicHealthChecks()
             
             isInitialized = true
+            print("✓ App initialization completed successfully")
             
             NotificationCenter.default.post(name: .appInitializationCompleted, object: nil)
             
@@ -80,8 +106,8 @@ public final class AppStateManager {
             initializationError = appError
             isHealthy = false
             
+            print("❌ App initialization failed: \(appError)")
             NotificationCenter.default.post(name: .appInitializationFailed, object: appError)
-            print("App initialization failed: \(appError)")
         }
     }
     
@@ -159,18 +185,35 @@ public final class AppStateManager {
     
     @MainActor
     public func requestMusicAuthorization() async throws {
+        print("Requesting MusicKit authorization...")
+        
         do {
             try await authorizationService.requestAuthorization()
-            await tokenManager.handleAuthorizationChange(isAuthorized: true)
+            
+            // Wait for authorization to settle
+            try await Task.sleep(for: .milliseconds(300))
+            
+            await authorizationService.checkCurrentStatus()
+            await tokenManager.handleAuthorizationChange(isAuthorized: authorizationService.isAuthorized)
             
             if authorizationService.isAuthorized {
+                print("✓ Authorization successful - starting services")
                 musicKitService.startListeningTracking()
                 setupListeningSessionObservers()
+                
+                // Try to enable background monitoring
+                do {
+                    try await enableBackgroundMonitoring()
+                } catch {
+                    print("⚠️ Background monitoring failed after authorization: \(error)")
+                    // Don't fail the authorization flow if background monitoring fails
+                }
             }
             
             await performHealthCheck()
             
         } catch {
+            print("❌ Authorization failed: \(error)")
             await tokenManager.handleAuthorizationChange(isAuthorized: false)
             musicKitService.stopListeningTracking()
             
@@ -180,20 +223,30 @@ public final class AppStateManager {
     
     @MainActor
     public func refreshServices() async throws {
+        print("Refreshing services...")
+        
         do {
             try await tokenManager.refreshTokenIfNeeded()
+            
+            // Refresh authorization with production-friendly timing
             try await authorizationService.refreshAuthorizationIfNeeded()
             
+            // Wait for status to stabilize
+            try await Task.sleep(for: .milliseconds(200))
+            
             if authorizationService.isAuthorized && !musicKitService.isTracking {
+                print("✓ Authorization restored - starting tracking")
                 musicKitService.startListeningTracking()
                 setupListeningSessionObservers()
             } else if !authorizationService.isAuthorized && musicKitService.isTracking {
+                print("⚠️ Authorization lost - stopping tracking")
                 musicKitService.stopListeningTracking()
             }
             
             await performHealthCheck()
             
         } catch {
+            print("❌ Service refresh failed: \(error)")
             await performHealthCheck()
             throw error
         }

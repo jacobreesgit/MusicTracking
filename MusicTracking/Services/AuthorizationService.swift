@@ -9,51 +9,72 @@ public final class AuthorizationService {
     public private(set) var isAuthorized: Bool = false
     public private(set) var lastAuthorizationCheck: Date?
     public private(set) var authorizationError: AppError?
+    public private(set) var isInitialCheckComplete: Bool = false
     
     private var authorizationObservationTask: Task<Void, Never>?
+    private var initializationTask: Task<Void, Never>?
     
     public init() {
-        Task {
-            await checkCurrentStatus()
-            await startAuthorizationObservation()
-        }
+        // Don't start automatic checking immediately - wait for explicit initialization
+        print("AuthorizationService initialized - waiting for explicit start")
     }
     
     deinit {
         authorizationObservationTask?.cancel()
+        initializationTask?.cancel()
     }
     
     @MainActor
     public func requestAuthorization() async throws {
         authorizationError = nil
+        print("Requesting MusicKit authorization...")
+        
+        // Mark that we've attempted authorization at least once
+        UserDefaults.standard.set(true, forKey: "HasAttemptedMusicKitAuthorization")
         
         do {
             let status = await MusicAuthorization.request()
-            await updateAuthorizationStatus(status)
+            print("MusicKit authorization result: \(status)")
             
-            switch status {
+            // Wait for the authorization dialog to fully complete
+            try await Task.sleep(for: .milliseconds(500))
+            
+            // Re-check the actual current status after dialog completion
+            let currentStatus = MusicAuthorization.currentStatus
+            await updateAuthorizationStatus(currentStatus)
+            
+            print("Final authorization status after dialog: \(currentStatus), isAuthorized: \(isAuthorized)")
+            
+            switch currentStatus {
             case .authorized:
+                UserDefaults.standard.set(true, forKey: "MusicKitAuthorizationGranted")
                 NotificationCenter.default.post(name: .musicKitAuthorizationChanged, object: true)
+                print("✓ MusicKit authorization successful")
             case .denied:
+                UserDefaults.standard.set(false, forKey: "MusicKitAuthorizationGranted")
                 let error = AppError.musicKitPermissionDenied
                 authorizationError = error
                 NotificationCenter.default.post(name: .musicKitAuthorizationChanged, object: false)
+                print("❌ MusicKit authorization denied")
                 throw error
             case .notDetermined:
                 let error = AppError.musicKitNotAuthorized
                 authorizationError = error
+                print("❌ MusicKit authorization not determined")
                 throw error
             case .restricted:
                 let error = AppError.musicKitNotAvailable
                 authorizationError = error
+                print("❌ MusicKit authorization restricted")
                 throw error
             @unknown default:
                 let error = AppError.musicKitUnknownError(
                     NSError(domain: "AuthorizationService", code: -1, userInfo: [
-                        NSLocalizedDescriptionKey: "Unknown authorization status: \(status)"
+                        NSLocalizedDescriptionKey: "Unknown authorization status: \(currentStatus)"
                     ])
                 )
                 authorizationError = error
+                print("❌ MusicKit authorization unknown status: \(currentStatus)")
                 throw error
             }
         } catch let error as AppError {
@@ -62,6 +83,7 @@ public final class AuthorizationService {
         } catch {
             let appError = AppError.from(musicKitError: error)
             authorizationError = appError
+            print("❌ MusicKit authorization error: \(appError)")
             throw appError
         }
     }
@@ -71,6 +93,8 @@ public final class AuthorizationService {
         let status = MusicAuthorization.currentStatus
         await updateAuthorizationStatus(status)
         lastAuthorizationCheck = Date()
+        isInitialCheckComplete = true
+        print("Authorization status checked: \(status), isAuthorized: \(isAuthorized)")
     }
     
     @MainActor
@@ -92,10 +116,17 @@ public final class AuthorizationService {
     
     @MainActor
     public func refreshAuthorizationIfNeeded() async throws {
+        // Always check current status first, especially for production installs
+        await checkCurrentStatus()
+        
+        // Wait a brief moment for authorization status to settle in production
+        try await Task.sleep(for: .milliseconds(200))
+        
+        // Re-check after delay to handle production timing issues
+        await checkCurrentStatus()
+        
         if requiresReauthorization() || !isAuthorized {
             try await requestAuthorization()
-        } else {
-            await checkCurrentStatus()
         }
     }
     
@@ -118,7 +149,10 @@ public final class AuthorizationService {
         switch authorizationStatus {
         case .notDetermined:
             return true
-        case .denied, .restricted:
+        case .denied:
+            // Allow retry for denied status in case user wants to change their mind
+            return true
+        case .restricted:
             return false
         case .authorized:
             return requiresReauthorization()
@@ -127,8 +161,50 @@ public final class AuthorizationService {
         }
     }
     
+    public func isFirstTimeUser() -> Bool {
+        return !UserDefaults.standard.bool(forKey: "HasAttemptedMusicKitAuthorization")
+    }
+    
+    public func hasBeenPreviouslyAuthorized() -> Bool {
+        return UserDefaults.standard.bool(forKey: "MusicKitAuthorizationGranted")
+    }
+    
+    @MainActor
+    public func startInitialization() async {
+        guard initializationTask == nil else { return }
+        
+        initializationTask = Task {
+            // Perform initial status check
+            await checkCurrentStatus()
+            
+            // Wait for authorization to settle, especially important for production installs
+            try? await Task.sleep(for: .milliseconds(500))
+            
+            // Check again after delay
+            await checkCurrentStatus()
+            
+            // Start periodic observation only after initial check is complete
+            await startAuthorizationObservation()
+        }
+        
+        await initializationTask?.value
+    }
+    
+    @MainActor
+    public func waitForInitialCheck() async {
+        while !isInitialCheckComplete {
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+    }
+    
     private func startAuthorizationObservation() async {
+        // Only start observation if not already running
+        guard authorizationObservationTask == nil else { return }
+        
         authorizationObservationTask = Task {
+            // Wait before starting periodic checks to avoid interference
+            try? await Task.sleep(for: .seconds(5))
+            
             while !Task.isCancelled {
                 _ = await MainActor.run {
                     Task {
@@ -136,7 +212,8 @@ public final class AuthorizationService {
                     }
                 }
                 
-                try? await Task.sleep(for: .seconds(30))
+                // Use longer intervals to reduce interference
+                try? await Task.sleep(for: .seconds(60))
             }
         }
     }
