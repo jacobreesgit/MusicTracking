@@ -308,6 +308,12 @@ public final class MusicKitService {
             throw AppError.backgroundTaskFailed("Background monitor not configured")
         }
         
+        // Check if we're in restricted mode and warn but still attempt
+        let status = UIApplication.shared.backgroundRefreshStatus
+        if status == .restricted {
+            print("⚠️ Background refresh is restricted - attempting to register background tasks anyway")
+        }
+        
         try await monitor.startMonitoring()
         backgroundMonitoringEnabled = true
         
@@ -452,7 +458,8 @@ public final class MusicKitService {
             }
         }
         
-        supportsBackgroundMonitoring = status == .available
+        // Allow background monitoring even in restricted mode as iOS can still register tasks
+        supportsBackgroundMonitoring = status == .available || status == .restricted
         print("\nFinal supportsBackgroundMonitoring: \(supportsBackgroundMonitoring)")
         print("=== End Enhanced Debug ===\n")
     }
@@ -500,7 +507,7 @@ public final class MusicKitService {
         
         // Basic status check
         diagnostics.backgroundRefreshStatus = status
-        diagnostics.supportsBackgroundMonitoring = status == .available
+        diagnostics.supportsBackgroundMonitoring = status == .available || status == .restricted
         
         // System environment checks
         diagnostics.isLowPowerModeEnabled = ProcessInfo.processInfo.isLowPowerModeEnabled
@@ -536,9 +543,9 @@ public final class MusicKitService {
         switch diagnostics.backgroundRefreshStatus {
         case .restricted:
             if diagnostics.isLowPowerModeEnabled {
-                return "Background monitoring is blocked because Low Power Mode is enabled. This conserves battery but prevents music tracking in the background."
+                return "Background monitoring is limited because Low Power Mode is enabled. The app will attempt to track music but with reduced background capabilities to conserve battery."
             } else {
-                return "Background monitoring is restricted by system policies. This could be due to parental controls, Screen Time restrictions, or corporate device management policies."
+                return "Background monitoring is restricted by system policies but will still be attempted. This could be due to parental controls, Screen Time restrictions, or corporate device management policies."
             }
             
         case .denied:
