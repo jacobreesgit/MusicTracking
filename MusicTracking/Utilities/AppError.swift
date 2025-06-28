@@ -17,6 +17,7 @@ public enum AppError: LocalizedError, Equatable {
     case coreDataModelNotFound
     
     case backgroundTaskFailed(String)
+    case backgroundTaskFailedWithDiagnostics([String: Any])
     case backgroundTaskExpired
     
     case invalidData(String)
@@ -61,6 +62,12 @@ public enum AppError: LocalizedError, Equatable {
             
         case .backgroundTaskFailed(let message):
             return "Background task failed: \(message)"
+        case .backgroundTaskFailedWithDiagnostics(let userInfo):
+            if let diagnosis = userInfo["diagnosis"] as? String {
+                return diagnosis
+            } else {
+                return "Background monitoring is not available on this device."
+            }
         case .backgroundTaskExpired:
             return "Background task expired before completion."
             
@@ -103,7 +110,7 @@ public enum AppError: LocalizedError, Equatable {
         case .coreDataContextNotFound, .coreDataModelNotFound:
             return "Database is not properly configured."
             
-        case .backgroundTaskFailed, .backgroundTaskExpired:
+        case .backgroundTaskFailed, .backgroundTaskFailedWithDiagnostics, .backgroundTaskExpired:
             return "Background processing encountered an issue."
             
         case .invalidData, .missingData, .parsingError:
@@ -137,6 +144,12 @@ public enum AppError: LocalizedError, Equatable {
             
         case .backgroundTaskFailed, .backgroundTaskExpired:
             return "The app will retry the operation when possible."
+        case .backgroundTaskFailedWithDiagnostics(let userInfo):
+            if let troubleshootingSteps = userInfo["troubleshootingSteps"] as? [String], !troubleshootingSteps.isEmpty {
+                return troubleshootingSteps.joined(separator: "\n• ")
+            } else {
+                return "Check Settings > General > Background App Refresh and ensure it's enabled for this app."
+            }
             
         case .invalidData, .missingData, .parsingError:
             return "This may be a temporary issue. Try again later."
@@ -155,7 +168,7 @@ public enum AppError: LocalizedError, Equatable {
             return true
         case .cloudKitSyncFailed, .cloudKitNotAvailable:
             return true
-        case .backgroundTaskExpired, .backgroundTaskFailed:
+        case .backgroundTaskExpired, .backgroundTaskFailed, .backgroundTaskFailedWithDiagnostics:
             return true
         case .coreDataSaveFailed, .coreDataFetchFailed:
             return true

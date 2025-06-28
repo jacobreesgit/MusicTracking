@@ -358,10 +358,268 @@ public final class MusicKitService {
     }
     
     private func checkBackgroundMonitoringSupport() {
-        supportsBackgroundMonitoring = UIApplication.shared.backgroundRefreshStatus == .available
-        print("Background monitoring support: \(supportsBackgroundMonitoring)")
+        let status = UIApplication.shared.backgroundRefreshStatus
+        
+        print("=== Enhanced Background Monitoring Debug ===")
+        print("Background refresh status raw value: \(status.rawValue)")
+        
+        var diagnosisMessages: [String] = []
+        var possibleSolutions: [String] = []
+        
+        switch status {
+        case .restricted:
+            print("❌ Background refresh is RESTRICTED")
+            diagnosisMessages.append("Background App Refresh is restricted by system policies")
+            
+            // Detailed restriction analysis
+            if ProcessInfo.processInfo.isLowPowerModeEnabled {
+                diagnosisMessages.append("• Low Power Mode is enabled - this can restrict background tasks")
+                possibleSolutions.append("Disable Low Power Mode in Settings > Battery")
+            }
+            
+            // Check for parental controls indicators
+            diagnosisMessages.append("• Possible causes: Parental Controls, Screen Time restrictions, or Corporate/MDM policies")
+            possibleSolutions.append("Check Settings > Screen Time > Content & Privacy Restrictions")
+            possibleSolutions.append("Check with IT administrator if device is managed by organization")
+            
+        case .denied:
+            print("❌ Background refresh is DENIED by user")
+            diagnosisMessages.append("User has disabled Background App Refresh")
+            possibleSolutions.append("Enable in Settings > General > Background App Refresh")
+            possibleSolutions.append("Enable for this app specifically in Settings > MusicTracking > Background App Refresh")
+            
+        case .available:
+            print("✅ Background refresh is AVAILABLE")
+            diagnosisMessages.append("Background App Refresh is enabled and available")
+            
+        @unknown default:
+            print("⚠️ Unknown background refresh status: \(status)")
+            diagnosisMessages.append("Unknown background refresh status - this may be a new iOS version")
+        }
+        
+        // Enhanced system diagnostics
+        print("\n--- System Diagnostics ---")
+        print("Low Power Mode: \(ProcessInfo.processInfo.isLowPowerModeEnabled)")
+        print("Device model: \(UIDevice.current.model)")
+        print("iOS Version: \(UIDevice.current.systemVersion)")
+        print("App State: \(applicationStateDescription())")
+        print("Bundle ID: \(Bundle.main.bundleIdentifier ?? "Unknown")")
+        
+        // Memory and performance checks
+        let memoryInfo = getMemoryInfo()
+        print("Available Memory: \(memoryInfo.available) MB")
+        print("Used Memory: \(memoryInfo.used) MB")
+        
+        // Background modes verification
+        print("\n--- Background Capabilities ---")
+        if let backgroundModes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String] {
+            print("Configured background modes: \(backgroundModes)")
+        } else {
+            print("⚠️ No background modes configured in Info.plist")
+            diagnosisMessages.append("Background modes may not be properly configured")
+        }
+        
+        // Background task identifiers check
+        if let taskIdentifiers = Bundle.main.object(forInfoDictionaryKey: "BGTaskSchedulerPermittedIdentifiers") as? [String] {
+            print("Background task identifiers: \(taskIdentifiers)")
+        }
+        
+        // Simulator detection with enhanced warnings
+        #if targetEnvironment(simulator)
+        print("⚠️ Running in iOS Simulator")
+        diagnosisMessages.append("iOS Simulator has limited background task capabilities")
+        possibleSolutions.append("Test on physical device for full background functionality")
+        #else
+        print("✅ Running on physical device")
+        #endif
+        
+        // Settings verification guidance
+        print("\n--- Settings Verification Guide ---")
+        print("1. Settings > General > Background App Refresh (should be ON)")
+        print("2. Settings > MusicTracking > Background App Refresh (should be ON)")
+        print("3. Settings > Screen Time > Content & Privacy Restrictions (check if restricted)")
+        print("4. Settings > Battery > Low Power Mode (should be OFF for full functionality)")
+        
+        print("\n--- Diagnosis Summary ---")
+        for message in diagnosisMessages {
+            print("• \(message)")
+        }
+        
+        if !possibleSolutions.isEmpty {
+            print("\n--- Possible Solutions ---")
+            for solution in possibleSolutions {
+                print("• \(solution)")
+            }
+        }
+        
+        supportsBackgroundMonitoring = status == .available
+        print("\nFinal supportsBackgroundMonitoring: \(supportsBackgroundMonitoring)")
+        print("=== End Enhanced Debug ===\n")
     }
     
+    private func applicationStateDescription() -> String {
+        switch UIApplication.shared.applicationState {
+        case .active:
+            return "Active"
+        case .inactive:
+            return "Inactive"
+        case .background:
+            return "Background"
+        @unknown default:
+            return "Unknown (\(UIApplication.shared.applicationState.rawValue))"
+        }
+    }
+    
+    private func getMemoryInfo() -> (available: Int, used: Int) {
+        var info = mach_task_basic_info()
+        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size)/4
+        
+        let kerr: kern_return_t = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
+                task_info(mach_task_self_,
+                         task_flavor_t(MACH_TASK_BASIC_INFO),
+                         $0,
+                         &count)
+            }
+        }
+        
+        if kerr == KERN_SUCCESS {
+            let usedMB = Int(info.resident_size) / 1024 / 1024
+            let totalMB = Int(ProcessInfo.processInfo.physicalMemory) / 1024 / 1024
+            return (available: totalMB - usedMB, used: usedMB)
+        }
+        
+        return (available: 0, used: 0)
+    }
+    
+    // MARK: - Comprehensive Background Monitoring Diagnostics
+    
+    public func performComprehensiveBackgroundDiagnostics() -> BackgroundMonitoringDiagnostics {
+        let status = UIApplication.shared.backgroundRefreshStatus
+        var diagnostics = BackgroundMonitoringDiagnostics()
+        
+        // Basic status check
+        diagnostics.backgroundRefreshStatus = status
+        diagnostics.supportsBackgroundMonitoring = status == .available
+        
+        // System environment checks
+        diagnostics.isLowPowerModeEnabled = ProcessInfo.processInfo.isLowPowerModeEnabled
+        diagnostics.isSimulator = {
+            #if targetEnvironment(simulator)
+            return true
+            #else
+            return false
+            #endif
+        }()
+        
+        diagnostics.deviceModel = UIDevice.current.model
+        diagnostics.iOSVersion = UIDevice.current.systemVersion
+        diagnostics.applicationState = UIApplication.shared.applicationState
+        
+        // Memory diagnostics
+        let memoryInfo = getMemoryInfo()
+        diagnostics.availableMemoryMB = memoryInfo.available
+        diagnostics.usedMemoryMB = memoryInfo.used
+        
+        // Configuration checks
+        diagnostics.backgroundModes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String] ?? []
+        diagnostics.backgroundTaskIdentifiers = Bundle.main.object(forInfoDictionaryKey: "BGTaskSchedulerPermittedIdentifiers") as? [String] ?? []
+        
+        // Generate user-friendly diagnosis
+        diagnostics.userFriendlyDiagnosis = generateUserFriendlyDiagnosis(for: diagnostics)
+        diagnostics.troubleshootingSteps = generateTroubleshootingSteps(for: diagnostics)
+        
+        return diagnostics
+    }
+    
+    private func generateUserFriendlyDiagnosis(for diagnostics: BackgroundMonitoringDiagnostics) -> String {
+        switch diagnostics.backgroundRefreshStatus {
+        case .restricted:
+            if diagnostics.isLowPowerModeEnabled {
+                return "Background monitoring is blocked because Low Power Mode is enabled. This conserves battery but prevents music tracking in the background."
+            } else {
+                return "Background monitoring is restricted by system policies. This could be due to parental controls, Screen Time restrictions, or corporate device management policies."
+            }
+            
+        case .denied:
+            return "Background monitoring is disabled because Background App Refresh has been turned off for this app. You can enable it in Settings."
+            
+        case .available:
+            return "Background monitoring is available and should work normally."
+            
+        @unknown default:
+            return "Background monitoring status is unknown. This may indicate a new iOS version or system issue."
+        }
+    }
+    
+    private func generateTroubleshootingSteps(for diagnostics: BackgroundMonitoringDiagnostics) -> [String] {
+        var steps: [String] = []
+        
+        switch diagnostics.backgroundRefreshStatus {
+        case .restricted:
+            if diagnostics.isLowPowerModeEnabled {
+                steps.append("Turn off Low Power Mode: Settings > Battery > Low Power Mode")
+            }
+            steps.append("Check Screen Time restrictions: Settings > Screen Time > Content & Privacy Restrictions > Background Activities")
+            steps.append("If your device is managed by an organization, contact your IT administrator")
+            steps.append("Restart your device to clear any temporary restrictions")
+            
+        case .denied:
+            steps.append("Enable Background App Refresh globally: Settings > General > Background App Refresh")
+            steps.append("Enable for MusicTracking specifically: Settings > MusicTracking > Background App Refresh")
+            
+        case .available:
+            if diagnostics.isSimulator {
+                steps.append("Test on a physical device - simulators have limited background capabilities")
+            }
+            if diagnostics.backgroundModes.isEmpty {
+                steps.append("Contact developer - background modes may not be properly configured")
+            }
+            
+        @unknown default:
+            steps.append("Update iOS to the latest version")
+            steps.append("Restart the app and try again")
+        }
+        
+        return steps
+    }
+    
+    // MARK: - User-Facing Error Handling
+    
+    public func getBackgroundMonitoringError() -> AppError? {
+        let diagnostics = performComprehensiveBackgroundDiagnostics()
+        
+        guard !diagnostics.supportsBackgroundMonitoring else {
+            return nil // No error if supported
+        }
+        
+        let userInfo: [String: Any] = [
+            "diagnosis": diagnostics.userFriendlyDiagnosis,
+            "troubleshootingSteps": diagnostics.troubleshootingSteps,
+            "backgroundRefreshStatus": diagnostics.backgroundRefreshStatus.rawValue,
+            "isLowPowerMode": diagnostics.isLowPowerModeEnabled
+        ]
+        
+        return AppError.backgroundTaskFailedWithDiagnostics(userInfo)
+    }
+
+    private func checkBackgroundTaskCapabilities() {
+        print("=== Background Task Capabilities ===")
+        
+        // Check background modes in Info.plist
+        if let backgroundModes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String] {
+            print("Background modes in Info.plist: \(backgroundModes)")
+        } else {
+            print("❌ No background modes found in Info.plist")
+        }
+        
+        // Check background time remaining
+        let backgroundTimeRemaining = UIApplication.shared.backgroundTimeRemaining
+        print("Background time remaining: \(backgroundTimeRemaining)")
+        
+        print("=== End Background Task Capabilities ===")
+    }
+
     @MainActor
     private func handleBackgroundModeChange() {
         if UIApplication.shared.applicationState == .background && backgroundMonitoringEnabled {

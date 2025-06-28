@@ -1,5 +1,6 @@
 import Foundation
 import MusicKit
+import UIKit
 
 public struct Song {
     public let id: MusicItemID
@@ -169,5 +170,63 @@ extension DomainListeningSession: Equatable {
 extension DomainListeningSession: Hashable {
     public func hash(into hasher: inout Hasher) {
         hasher.combine(id)
+    }
+}
+
+// MARK: - Background Monitoring Diagnostics
+
+public struct BackgroundMonitoringDiagnostics {
+    public var backgroundRefreshStatus: UIBackgroundRefreshStatus = .denied
+    public var supportsBackgroundMonitoring: Bool = false
+    public var isLowPowerModeEnabled: Bool = false
+    public var isSimulator: Bool = false
+    public var deviceModel: String = ""
+    public var iOSVersion: String = ""
+    public var applicationState: UIApplication.State = .inactive
+    public var availableMemoryMB: Int = 0
+    public var usedMemoryMB: Int = 0
+    public var backgroundModes: [String] = []
+    public var backgroundTaskIdentifiers: [String] = []
+    public var userFriendlyDiagnosis: String = ""
+    public var troubleshootingSteps: [String] = []
+    
+    public init() {}
+    
+    public var backgroundRefreshStatusDescription: String {
+        switch backgroundRefreshStatus {
+        case .available:
+            return "Available"
+        case .denied:
+            return "Denied"
+        case .restricted:
+            return "Restricted"
+        @unknown default:
+            return "Unknown (\(backgroundRefreshStatus.rawValue))"
+        }
+    }
+    
+    public var applicationStateDescription: String {
+        switch applicationState {
+        case .active:
+            return "Active"
+        case .inactive:
+            return "Inactive"
+        case .background:
+            return "Background"
+        @unknown default:
+            return "Unknown (\(applicationState.rawValue))"
+        }
+    }
+    
+    public var summary: String {
+        return """
+        Background Monitoring Diagnostics:
+        • Status: \(backgroundRefreshStatusDescription)
+        • Supported: \(supportsBackgroundMonitoring ? "Yes" : "No")
+        • Low Power Mode: \(isLowPowerModeEnabled ? "Enabled" : "Disabled")
+        • Device: \(deviceModel) (iOS \(iOSVersion))
+        • Environment: \(isSimulator ? "Simulator" : "Physical Device")
+        • Memory: \(usedMemoryMB)MB used, \(availableMemoryMB)MB available
+        """
     }
 }

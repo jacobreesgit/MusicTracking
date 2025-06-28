@@ -337,6 +337,18 @@ public final class AppStateManager {
             print("Background monitoring enabled successfully")
         } catch {
             print("Failed to enable background monitoring: \(error)")
+            
+            // Perform comprehensive diagnostics to help with troubleshooting
+            let diagnostics = musicKitService.performComprehensiveBackgroundDiagnostics()
+            print("=== Background Monitoring Failure Diagnostics ===")
+            print(diagnostics.summary)
+            print("User-friendly diagnosis: \(diagnostics.userFriendlyDiagnosis)")
+            print("Troubleshooting steps:")
+            for (index, step) in diagnostics.troubleshootingSteps.enumerated() {
+                print("\(index + 1). \(step)")
+            }
+            print("=== End Diagnostics ===")
+            
             throw error
         }
     }
@@ -350,6 +362,18 @@ public final class AppStateManager {
         }
         
         await performHealthCheck()
+    }
+    
+    // MARK: - Background Monitoring Diagnostics
+    
+    @MainActor
+    public func getBackgroundMonitoringDiagnostics() -> BackgroundMonitoringDiagnostics {
+        return musicKitService.performComprehensiveBackgroundDiagnostics()
+    }
+    
+    @MainActor
+    public func getBackgroundMonitoringError() -> AppError? {
+        return musicKitService.getBackgroundMonitoringError()
     }
     
     public func getBackgroundMonitoringStatus() -> (isActive: Bool, state: BackgroundMonitoringState, metrics: MonitoringMetrics?) {
