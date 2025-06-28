@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="24233.11" systemVersion="25A5295e" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithCloudKit="YES" usedWithSwiftData="YES" userDefinedModelVersionIdentifier="">
-    <entity name="ListeningSession" representedClassName="ListeningSessionEntity" syncable="YES" codeGenerationType="class">
+    <entity name="ListeningSession" representedClassName="ListeningSessionEntity" syncable="YES">
         <attribute name="album" optional="YES" attributeType="String"/>
         <attribute name="artist" optional="YES" attributeType="String"/>
         <attribute name="artworkURL" optional="YES" attributeType="String"/>
@@ -18,7 +18,7 @@
         <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="wasSkipped" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
     </entity>
-    <entity name="WeeklyStats" representedClassName="WeeklyStatsEntity" syncable="YES" codeGenerationType="class">
+    <entity name="WeeklyStats" representedClassName="WeeklyStatsEntity" syncable="YES">
         <attribute name="averageSessionDuration" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
